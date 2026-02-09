@@ -1,0 +1,72 @@
+# private-ai-api
+
+A monorepo containing both the private AI server and client components for running a fully private, OpenAI-compatible LLM inference infrastructure.
+
+## Project Structure
+
+This monorepo contains two main components:
+
+- **server/** – The private AI server that exposes an OpenAI-compatible API
+- **client/** – Client-side setup and configuration for connecting to the server
+
+## Overview
+
+The private-ai-api project provides a complete solution for running large language models on your own hardware with zero public internet exposure and zero third-party cloud dependencies.
+
+### Server (private-ai-server)
+- Runs on a dedicated Apple Silicon Mac with high unified memory
+- Exposes OpenAI-compatible `/v1` API endpoints
+- Accessible only via secure overlay network (Tailscale)
+- 24/7 operation for on-demand inference
+
+### Client (private-ai-client)
+- macOS environment setup and configuration
+- Connects to the server via Tailscale
+- Configures tools like Aider to use the private API automatically
+- Zero manual configuration per session
+
+## Quick Start
+
+### Server Setup
+See [server/README.md](server/README.md) for detailed server installation and configuration.
+
+### Client Setup
+See [client/README.md](client/README.md) for client installation and usage.
+
+## Network Architecture
+
+- **No public internet exposure** – All access via Tailscale private network
+- **Device-level authorization** – Tailscale ACLs control access
+- **OpenAI-compatible** – Works with any tool supporting custom OpenAI base URLs
+
+## Requirements
+
+### Server
+- Apple Silicon Mac (M-series) with ≥96 GB unified memory recommended
+- macOS 14 Sonnet or later
+- High upload bandwidth (≥100 Mb/s recommended)
+- 24/7 operation capability
+
+### Client
+- macOS 14 Sonnet or later
+- Homebrew
+- Python 3.10+
+- Tailscale account
+
+## Documentation
+
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) – Implementation roadmap
+- [AGENTS.md](AGENTS.md) – Agent roles and responsibilities
+- [server/SETUP.md](server/SETUP.md) – Server setup instructions
+- [client/SETUP.md](client/SETUP.md) – Client setup instructions
+
+## Security Model
+
+- Network-layer isolation via Tailscale
+- No built-in authentication (relies on network security)
+- No ports exposed to public internet
+- Tag-based access control
+
+## License
+
+[Specify license here]

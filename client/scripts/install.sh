@@ -498,16 +498,36 @@ fi
 section_break
 echo -e "${GREEN}✓ Installation Complete!${NC}"
 echo ""
+echo "Aider is ready and configured to use your remote Ollama server."
+echo ""
+
+# Determine actual shell command for reload
+RELOAD_CMD="exec $SHELL"
+if [[ "$USER_SHELL" == "zsh" ]]; then
+    RELOAD_CMD="exec zsh"
+elif [[ "$USER_SHELL" == "bash" ]]; then
+    RELOAD_CMD="exec bash"
+fi
 
 if [[ "$SERVER_REACHABLE" == "true" ]]; then
-    echo "Reload your shell and start using Aider:"
+    echo "Reload your shell (applies environment changes):"
     echo ""
-    echo -e "  ${YELLOW}exec \$SHELL${NC}"
-    echo -e "  ${GREEN}aider${NC}"
+    echo -e "  ${YELLOW}$RELOAD_CMD${NC}"
+    echo ""
+    echo "Start using Aider:"
+    echo ""
+    echo -e "  ${GREEN}aider${NC}                          # Interactive mode"
+    echo -e "  ${GREEN}aider --model ollama/qwen2.5-coder:7b${NC}    # Specify model"
+    echo -e "  ${GREEN}aider --yes${NC}                    # Auto-accept suggestions"
+    echo ""
+    echo "The server has 1 model available. Use ${YELLOW}aider --models${NC} to list them."
 else
-    echo "Server not reachable yet. Once it's running:"
+    echo "Server not reachable yet. Once it's running, reload your shell:"
     echo ""
-    echo -e "  ${YELLOW}exec \$SHELL${NC}"
-    echo -e "  ${GREEN}aider${NC}"
+    echo -e "  ${YELLOW}$RELOAD_CMD${NC}"
+    echo ""
+    echo "Then start using Aider:"
+    echo ""
+    echo -e "  ${GREEN}aider --model ollama/your-model${NC}"
 fi
 echo ""

@@ -502,7 +502,7 @@ echo "║                  ✓  Installation Complete!                    ║"
 echo "║                                                                ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
-echo -e "${GREEN}Aider is ready and configured to use your remote Ollama server.${NC}"
+echo -e "${GREEN}Aider is ready and configured to use your remote Ollama server!${NC}"
 echo ""
 
 # Determine actual shell command for reload
@@ -523,6 +523,8 @@ if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo ""
     echo -e "  ${GREEN}aider${NC}                          # Uses default model"
     echo -e "  ${GREEN}aider --model ollama/model-name${NC}    # Select specific model"
+    echo ""
+    echo -e "Your server has ${GREEN}1 model${NC} available."
     echo ""
 else
     echo -e "${YELLOW}Server not reachable.${NC} Once running, start Aider:"

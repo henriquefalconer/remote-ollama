@@ -114,7 +114,7 @@ Claude Code v2.1.39 is tested with Ollama v0.5.5
 But your server has v0.5.4
 
 Recommendation: Update Ollama on server to v0.5.5
-  ssh ai-server 'brew upgrade ollama'
+  On the server, run: brew upgrade ollama
 ```
 
 **Behavior on unknown**:
@@ -288,7 +288,7 @@ gh release list --repo ollama/ollama | grep anthropic
 
 # 5. Re-test when fix available
 # Update Ollama on server
-ssh ai-server 'brew upgrade ollama'
+On the server, run: brew upgrade ollama
 
 # Test again
 claude-ollama --model qwen3-coder
@@ -304,7 +304,7 @@ claude-ollama --model qwen3-coder
 ```bash
 # 1. Check for updates
 npm outdated -g @anthropic-ai/claude-code
-ssh ai-server 'brew outdated ollama'
+On the server, run: brew outdated ollama
 
 # 2. If updates available, check compatibility
 ./client/scripts/check-compatibility.sh
@@ -368,7 +368,7 @@ Error: Missing required field: metadata
 
 3. **Check Ollama server logs**:
    ```bash
-   ssh ai-server 'tail -100 /tmp/ollama.stderr.log'
+   On the server, run: tail -100 /tmp/ollama.stderr.log
    ```
 
 4. **Test with Anthropic cloud API**:

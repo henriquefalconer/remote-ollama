@@ -190,3 +190,77 @@ The script will:
 4. Report success/failure for each model
 
 This step is optional but recommended if you want immediate response times after server boot or restart. You can also integrate this into launchd for automatic warmup at boot - see the script's inline comments for details.
+
+## Troubleshooting
+
+### Service Not Starting
+
+**Symptom**: `launchctl list | grep com.ollama` shows nothing, or service won't load.
+
+**Solutions**:
+- Check if another Ollama instance is running: `ps aux | grep ollama`
+- If Homebrew services is running Ollama, stop it: `brew services stop ollama`
+- Verify plist exists: `ls -l ~/Library/LaunchAgents/com.ollama.plist`
+- Check plist syntax: `plutil -lint ~/Library/LaunchAgents/com.ollama.plist`
+- Try manually loading: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist`
+- Check logs for errors: `tail -20 /tmp/ollama.stderr.log`
+
+### Port 11434 Already in Use
+
+**Symptom**: Service fails to start, logs show "address already in use".
+
+**Solutions**:
+- Find what's using the port: `lsof -i :11434`
+- Stop conflicting service (usually Homebrew's Ollama): `brew services stop ollama`
+- Kill the conflicting process: `kill <PID>` (from lsof output)
+- Restart the LaunchAgent: `launchctl kickstart -k gui/$(id -u)/com.ollama`
+
+### API Not Responding
+
+**Symptom**: `curl http://localhost:11434/v1/models` times out or refuses connection.
+
+**Solutions**:
+- Verify service is running: `launchctl list | grep com.ollama` (should show PID in first column)
+- Check if process is actually running: `ps aux | grep "[o]llama serve"`
+- Verify port is open: `nc -zv localhost 11434` or `lsof -i :11434`
+- Check environment variable in plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `0.0.0.0`)
+- Review logs: `tail -50 /tmp/ollama.stdout.log` and `tail -50 /tmp/ollama.stderr.log`
+
+### Models Not Loading
+
+**Symptom**: API responds but model inference requests fail.
+
+**Solutions**:
+- Verify models are pulled: `ollama list`
+- Pull the model manually: `ollama pull <model-name>`
+- Check available memory: Large models require significant RAM
+- Review stderr log for out-of-memory errors: `tail -50 /tmp/ollama.stderr.log`
+
+### Client Cannot Connect
+
+**Symptom**: Client can reach Tailscale IP but gets connection refused on port 11434.
+
+**Solutions**:
+- Verify OLLAMA_HOST=0.0.0.0 in plist (not 127.0.0.1): `plutil -p ~/Library/LaunchAgents/com.ollama.plist`
+- Test localhost first: `curl http://localhost:11434/v1/models` (should work)
+- Test Tailscale IP from server itself: `curl http://$(tailscale ip -4):11434/v1/models`
+- If localhost works but Tailscale IP doesn't, verify OLLAMA_HOST: restart service after fixing plist
+- Check Tailscale ACLs: client must have appropriate tag or device access
+- Verify no firewall blocking port 11434 (macOS firewall typically allows local binaries)
+
+### Running the Test Suite
+
+If unsure about the state of your installation, run the comprehensive test suite:
+
+```bash
+# Run all 20 tests
+./scripts/test.sh
+
+# Skip model inference tests (faster)
+./scripts/test.sh --skip-model-tests
+
+# Show detailed request/response data
+./scripts/test.sh --verbose
+```
+
+The test suite will identify specific issues with service status, API endpoints, security configuration, or network binding.

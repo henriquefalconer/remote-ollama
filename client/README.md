@@ -92,6 +92,78 @@ echo $OPENAI_API_KEY     # ollama
 
 Unlike the Ollama server, the client requires no start/stop/restart commands. Simply invoke tools when needed.
 
+## Testing & Verification
+
+### Running the Test Suite
+
+The client includes a comprehensive automated test suite that verifies installation and connectivity:
+
+```bash
+# Run all tests (27 tests covering environment, dependencies, connectivity, API contract, and Aider)
+./scripts/test.sh
+
+# Run tests without server connectivity checks (useful during initial setup)
+./scripts/test.sh --skip-server
+
+# Run only critical tests (skip API contract validation and Aider integration)
+./scripts/test.sh --quick
+
+# Run with verbose output (shows full API request/response details and timing)
+./scripts/test.sh --verbose
+```
+
+### Test Coverage
+
+The test suite validates:
+- **Environment Configuration** (7 tests): env file exists, all 4 variables set correctly, shell profile sourcing, variables exported
+- **Dependencies** (6 tests): Tailscale connected, Homebrew installed, Python 3.10+, pipx installed, Aider installed
+- **Connectivity** (6 tests): Server reachable, all API endpoints responding, error handling
+- **API Contract** (5 tests): Base URL formats, HTTP status codes, response schemas, streaming with usage data
+- **Aider Integration** (3 tests): Binary in PATH, environment variables configured
+- **Script Behavior** (3 tests): Uninstall script available, valid syntax, install idempotency
+
+### Sample Output
+
+```
+remote-ollama ai-client Test Suite
+Running 27 tests
+
+=== Environment Configuration Tests ===
+✓ PASS Environment file exists (~/.ai-client/env)
+✓ PASS OLLAMA_API_BASE is set: http://remote-ollama:11434/v1
+✓ PASS OPENAI_API_BASE is set: http://remote-ollama:11434/v1
+✓ PASS OPENAI_API_KEY is set correctly: ollama
+• SKIP AIDER_MODEL is not set (optional)
+✓ PASS Shell profile sources env file (/Users/vm/.zshrc)
+✓ PASS Environment variables are exported in env file
+
+=== Dependency Tests ===
+✓ PASS Tailscale is installed
+✓ PASS Tailscale is connected (IP: 100.100.246.47)
+✓ PASS Homebrew is installed
+✓ PASS Python 3.14 found (>= 3.10)
+✓ PASS pipx is installed
+✓ PASS Aider is installed: aider 0.86.1
+
+=== Connectivity Tests ===
+✓ PASS Server is reachable (remote-ollama)
+✓ PASS GET /v1/models returns valid JSON (1 models)
+
+...
+
+Test Summary
+───────────────────────────────
+Passed:  27
+Failed:  0
+Skipped: 2
+Total:   29
+═══════════════════════════════
+
+✓ All tests passed!
+```
+
+All 27 tests passed on hardware testing (2026-02-10 on vm@macos with Aider 0.86.1, Python 3.14).
+
 ## Uninstallation
 
 ```bash

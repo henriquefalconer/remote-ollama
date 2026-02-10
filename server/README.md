@@ -146,6 +146,66 @@ When to use it:
 - Before critical workloads that require immediate response
 - Can be integrated into launchd for automatic warmup at boot (see script comments)
 
+## Testing & Verification
+
+### Running the Test Suite
+
+The server includes a comprehensive automated test suite that verifies all functionality:
+
+```bash
+# Run all tests (20 tests covering service status, API endpoints, security, and network)
+./scripts/test.sh
+
+# Run tests without model inference (faster, skips model-dependent tests)
+./scripts/test.sh --skip-model-tests
+
+# Run with verbose output (shows full API request/response details and timing)
+./scripts/test.sh --verbose
+```
+
+### Test Coverage
+
+The test suite validates:
+- **Service Status** (4 tests): LaunchAgent loaded, process running as user, listening on port 11434, responds to HTTP
+- **API Endpoints** (7 tests): All OpenAI-compatible endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`)
+- **Streaming** (2 tests): SSE chunks, `stream_options.include_usage`
+- **Error Behavior** (2 tests): 404/400 status codes for invalid requests
+- **Security** (3 tests): Process owner is user (not root), logs readable, `OLLAMA_HOST=0.0.0.0` configured
+- **Network** (2 tests): Binds to 0.0.0.0, accessible via localhost and Tailscale IP
+
+### Sample Output
+
+```
+remote-ollama ai-server Test Suite
+Running 20 tests
+
+=== Service Status Tests ===
+✓ PASS LaunchAgent is loaded: com.ollama
+✓ PASS Ollama process is running (PID: 19272, user: vm)
+✓ PASS Ollama is listening on port 11434
+✓ PASS Ollama responds to HTTP requests
+
+=== API Endpoint Tests ===
+✓ PASS GET /v1/models returns valid JSON (1 models)
+✓ PASS GET /v1/models/{model} returns valid model details
+✓ PASS POST /v1/chat/completions (non-streaming) succeeded
+✓ PASS POST /v1/chat/completions (streaming) returns SSE chunks
+
+...
+
+Test Summary
+───────────────────────────────
+Passed:  20
+Failed:  0
+Skipped: 0
+Total:   20
+═══════════════════════════════
+
+✓ All tests passed!
+```
+
+All 20 tests passed on hardware testing (2026-02-10 on vm@remote-ollama with qwen2.5-coder:7b).
+
 ## Security
 
 See [specs/SECURITY.md](specs/SECURITY.md) for the complete security model.

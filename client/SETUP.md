@@ -98,22 +98,93 @@ If you installed via curl-pipe:
 
 ### "Connection refused" when testing connectivity
 
-- Ensure Tailscale is connected and logged in
-- Verify you have been granted the appropriate tag in Tailscale ACLs
-- Check that the server hostname matches your Tailscale configuration
-- Confirm the server is running and accessible
+**Symptom**: `curl $OPENAI_API_BASE/models` fails with connection refused.
+
+**Solutions**:
+- Verify Tailscale is connected: `tailscale status` (should show "Connected")
+- Check you can resolve server hostname: `ping remote-ollama` (or your custom hostname)
+- Verify you're on the same Tailscale network as the server
+- Check Tailscale ACLs: you must have the appropriate tag or device access granted by the admin
+- Test if server is responding: ask server admin to verify `./scripts/test.sh` passes
+- Verify server hostname in `~/.ai-client/env` matches your Tailscale configuration
 
 ### Environment variables not set
 
-- Ensure you opened a new terminal after installation
-- Check that `~/.ai-client/env` exists
-- Verify `~/.zshrc` has the sourcing line: `source ~/.ai-client/env`
+**Symptom**: Aider or other tools can't find the API base URL.
+
+**Solutions**:
+- Verify env file exists: `cat ~/.ai-client/env` (should show 4 variables)
+- Check variables are set in current shell: `echo $OPENAI_API_BASE` (should show URL)
+- Ensure you opened a **new terminal** after installation (or run `exec $SHELL`)
+- Verify shell profile sources env: `grep ai-client ~/.zshrc` (should show source line with markers)
+- Manually source for current session: `source ~/.ai-client/env`
+- If using bash instead of zsh, check `~/.bashrc` has the sourcing line
 
 ### Aider not found
 
-- Ensure pipx is installed: `brew install pipx`
-- Ensure pipx path is in your PATH
-- Try `pipx ensurepath` and open a new terminal
+**Symptom**: `aider` command not found, or `which aider` returns nothing.
+
+**Solutions**:
+- Verify pipx is installed: `which pipx` (should return `/opt/homebrew/bin/pipx` or similar)
+- Check if Aider is installed: `pipx list` (should show aider-chat)
+- Ensure pipx path is in PATH: `echo $PATH | grep .local/bin` (should show `~/.local/bin`)
+- Run `pipx ensurepath` to add pipx binaries to PATH, then open new terminal
+- Manually check if binary exists: `ls -l ~/.local/bin/aider` (should exist)
+- If missing, reinstall: `pipx install aider-chat`
+
+### Aider connects but responses are slow
+
+**Symptom**: Aider works but first request is very slow (30+ seconds).
+
+**Explanation**: This is expected on first request. Large models take time to load into memory.
+
+**Solutions**:
+- Ask server admin to run warm-models script: `./scripts/warm-models.sh <model-name>`
+- Subsequent requests will be much faster once model is loaded
+- Use smaller models for faster initial response (e.g., qwen2.5-coder:7b instead of :32b)
+
+### JSON mode or tools not working
+
+**Symptom**: Aider or tools report JSON mode not supported, or tool calling fails.
+
+**Explanation**: These features are model-dependent. Not all Ollama models support JSON mode or tool calling.
+
+**Solutions**:
+- Use a model known to support the feature (check Ollama model documentation)
+- For JSON mode: qwen2.5-coder:* and deepseek-r1:* generally support it
+- For tool calling: check if the specific model version supports function calling
+- The client is working correctly - this is a model capability limitation
+
+### Tailscale not connecting or staying connected
+
+**Symptom**: `tailscale status` shows "Stopped" or connection drops frequently.
+
+**Solutions**:
+- Start Tailscale: Open the Tailscale app from Applications
+- Verify you're logged in: `tailscale status` should show your email and devices
+- Check for network issues: some corporate/public WiFi blocks VPNs
+- Try restarting Tailscale: Quit app completely and reopen
+- Re-authenticate if needed: `tailscale login` (may require browser)
+
+### Running the Test Suite
+
+If unsure about the state of your installation, run the comprehensive test suite:
+
+```bash
+# Run all 27 tests
+./scripts/test.sh
+
+# Skip server connectivity tests (useful if server is down)
+./scripts/test.sh --skip-server
+
+# Run only critical tests (environment + dependencies, skip API validation)
+./scripts/test.sh --quick
+
+# Show detailed request/response data
+./scripts/test.sh --verbose
+```
+
+The test suite will identify specific issues with environment configuration, dependencies, server connectivity, or Aider integration.
 
 ## The client is now fully configured
 

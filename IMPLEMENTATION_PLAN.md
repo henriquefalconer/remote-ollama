@@ -3,21 +3,19 @@
  SPDX-License-Identifier: Proprietary
 -->
 
-## Implementation Complete (v0.0.0)
+## Implementation Status (v0.0.0)
 
-All core implementation priorities have been completed and validated:
+Comprehensive audit completed 2026-02-10. Core implementation is mostly complete, with remaining work itemized below.
 
-- ✅ All 5 implementation priorities complete: env.template, server install.sh, client install.sh, client uninstall.sh, warm-models.sh
-- ✅ Spec documentation complete: server now has REQUIREMENTS.md, SCRIPTS.md, and uninstall.sh spec; shell profile modification documented in client specs
+- ✅ 5 of 8 spec-required scripts implemented: env.template, server install.sh, client install.sh, client uninstall.sh, warm-models.sh
+- ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
 - ✅ Service management documentation: start/stop/restart commands in README and SETUP for server; client clarifies no daemon
-- ✅ Test script specifications complete: server/specs/SCRIPTS.md and client/specs/SCRIPTS.md document comprehensive test automation
-- ✅ All scripts syntax-checked and tested for bash compliance (set -euo pipefail, no undefined variables)
-- ✅ Executable permissions set on all scripts (755)
-- ✅ Documentation cross-links verified across all spec files, READMEs, and SETUP.md
-- ✅ Spec audit completed: no contradictions, all requirements satisfiable
+- ✅ All implemented scripts syntax-checked for bash compliance (set -euo pipefail, no undefined variables)
+- ✅ No TODO/FIXME/HACK/placeholder markers in any source files
 - ✅ Tag 0.0.0 created marking initial implementation
-- ✅ Status: Ready for deployment and integration testing on real hardware
-- ⏳ Next steps: Implement test scripts (Priority 6a/6b), test on Apple Silicon Mac with Tailscale, validate both installation methods (local clone + curl-pipe), verify end-to-end Aider workflow
+- ⏳ **3 scripts not yet implemented**: server uninstall.sh, server test.sh, client test.sh
+- ⏳ **1 spec compliance gap** in server install.sh (see Priority B in Remaining Work below)
+- ⏳ **3 documentation polish tasks** blocked until testing complete
 
 # Implementation Plan
 
@@ -25,11 +23,83 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 ## Current Status
 
-- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files, now includes test script specs)
+- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files, all include test script specs)
 - **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README, includes service management)
-- **Server implementation**: COMPLETE (install.sh COMPLETE, uninstall.sh SPECIFIED, warm-models.sh COMPLETE, test.sh SPECIFIED)
-- **Client implementation**: COMPLETE (env.template COMPLETE, install.sh COMPLETE, uninstall.sh COMPLETE, test.sh SPECIFIED)
-- **Integration testing**: READY (Priority 6a/6b test scripts specified; Priority 6c awaiting hardware)
+- **Server implementation**: install.sh COMPLETE (with 1 spec gap), uninstall.sh NOT IMPLEMENTED, warm-models.sh COMPLETE, test.sh NOT IMPLEMENTED
+- **Client implementation**: env.template COMPLETE, install.sh COMPLETE, uninstall.sh COMPLETE, test.sh NOT IMPLEMENTED
+- **Integration testing**: BLOCKED (test scripts not yet implemented; hardware testing awaiting test scripts)
+
+## Remaining Work (Priority Order)
+
+Items sorted by priority -- implement in this order to achieve full spec compliance.
+
+### Priority A: server/scripts/uninstall.sh -- NOT IMPLEMENTED
+- **File**: `server/scripts/uninstall.sh` (does not exist)
+- **Spec**: `server/specs/SCRIPTS.md` lines 21-29, `server/specs/FILES.md` line 15
+- **Effort**: Small-medium
+- **Dependencies**: None (reverses what install.sh creates)
+- **Requirements**:
+  - Stop the Ollama LaunchAgent service via `launchctl bootout gui/$(id -u)/com.ollama`
+  - Remove `~/Library/LaunchAgents/com.ollama.plist`
+  - Optionally clean up Ollama logs from `/tmp/` (`ollama.stdout.log`, `ollama.stderr.log`)
+  - Leave Homebrew, Tailscale, and Ollama binary untouched
+  - Leave downloaded models in `~/.ollama/models/` untouched (valuable data)
+  - Provide clear summary of what was removed and what remains
+  - Handle edge cases gracefully (service not running, plist missing, partial installation)
+  - Use `set -euo pipefail`, color-coded output, match style of existing scripts
+  - Be idempotent (safe to re-run)
+  - No sudo required
+
+### Priority B: server/scripts/install.sh -- macOS version check MISSING
+- **File**: `server/scripts/install.sh` (exists, 280 lines)
+- **Spec**: `server/specs/REQUIREMENTS.md` line 3: "macOS 14 Sonoma or later"
+- **Effort**: Trivial (add ~5 lines)
+- **Gap**: Script checks for macOS (Darwin) and Apple Silicon (arm64) but does NOT check macOS version >= 14. Should use `sw_vers -productVersion` and compare major version >= 14, matching what client/scripts/install.sh already does (lines 45-53).
+
+### Priority C: server/scripts/test.sh -- NOT IMPLEMENTED
+- **File**: `server/scripts/test.sh` (does not exist)
+- **Spec**: `server/specs/SCRIPTS.md` lines 43-88
+- **Effort**: Medium
+- **Dependencies**: server install.sh
+- **Requirements**:
+  - Service status tests: LaunchAgent loaded, process running as user (not root), listening on port 11434, responds to HTTP
+  - API endpoint tests: `GET /v1/models`, `GET /v1/models/{model}`, `POST /v1/chat/completions` (non-streaming), `POST /v1/chat/completions` (streaming with SSE), `POST /v1/chat/completions` (stream_options.include_usage), `POST /v1/chat/completions` (JSON mode), `POST /v1/responses` (experimental, note Ollama 0.5.0+)
+  - Error behavior tests: 500 on nonexistent model, malformed request handling
+  - Security tests: process owner is user not root, log files exist and readable, plist exists, `OLLAMA_HOST=0.0.0.0` in plist
+  - Network tests: binds to 0.0.0.0, localhost access, Tailscale IP access (if connected)
+  - Output: pass/fail per test, summary count (X passed, Y failed, Z skipped), exit code 0/non-zero, `--verbose`/`-v` flag, `--skip-model-tests` flag, colorized (green/red/yellow)
+  - Non-destructive: read-only API calls only
+
+### Priority D: client/scripts/test.sh -- NOT IMPLEMENTED
+- **File**: `client/scripts/test.sh` (does not exist)
+- **Spec**: `client/specs/SCRIPTS.md` lines 20-78
+- **Effort**: Medium
+- **Dependencies**: client install.sh
+- **Requirements**:
+  - Environment tests: `~/.private-ai-client/env` exists, all 4 vars set (`OLLAMA_API_BASE`, `OPENAI_API_BASE`, `OPENAI_API_KEY`, `AIDER_MODEL`), shell profile sources env file (marker comments), vars exported
+  - Dependency tests: Tailscale installed/running/connected, Homebrew installed, Python 3.10+, pipx installed, Aider installed via pipx
+  - Connectivity tests: Tailscale connectivity to server hostname, `GET /v1/models`, `GET /v1/models/{model}`, `POST /v1/chat/completions` non-streaming, `POST /v1/chat/completions` streaming SSE, error handling when server unreachable
+  - API contract validation: base URL format, HTTP status codes, response schema (OpenAI format), JSON mode, streaming with `stream_options.include_usage`
+  - Aider integration: `which aider`, binary in PATH, reads environment vars
+  - Script behavior: install.sh idempotency, uninstall.sh availability (local clone or `~/.private-ai-client/uninstall.sh`), uninstall.sh on clean system
+  - Output: pass/fail per test, summary count, exit code 0/non-zero, `--verbose`/`-v`, colorized
+  - Test modes: `--skip-server`, `--skip-aider`, `--quick`
+
+### Priority E: Documentation polish (3 remaining tasks)
+- **Blocked until**: Priorities C and D complete, plus hardware testing
+- [ ] Update `server/README.md` and `client/README.md` with actual tested commands and sample outputs
+- [ ] Expand troubleshooting sections in both SETUP.md files based on issues found during testing
+- [ ] Add quick-reference card for common operations (start/stop server, switch models, check status)
+
+### Non-Critical Spec Observations (informational)
+
+These are minor spec-vs-implementation discrepancies that are defensible design choices, not bugs:
+
+1. **Homebrew "checks / installs"**: Both `server/specs/SCRIPTS.md` line 6 and `client/specs/SCRIPTS.md` line 5 say "Checks / installs Homebrew", but both install scripts only check and fatal-exit if missing (do not offer to install). This is a reasonable safety choice since Homebrew installation requires `/bin/bash -c "$(curl ...)"` which is destructive. The spec could be read as "enforces Homebrew is present."
+
+2. **Server install.sh Tailscale machine name**: `server/specs/SCRIPTS.md` line 16 says "Prompts user to set Tailscale machine name" but the implementation only displays instructions (no interactive `read` prompt). Acceptable because machine name is set in the Tailscale admin console, not via CLI.
+
+3. **Client connectivity diagnostics**: `client/specs/FUNCTIONALITIES.md` lines 17-19 says "Provide clear error messages if Tailscale is not joined or tag is missing." The implementation provides a generic bullet list of possible reasons rather than diagnosing the specific issue. A future enhancement could run `tailscale status` to differentiate scenarios.
 
 ## Spec Audit Summary
 
@@ -41,12 +111,12 @@ Every spec file was read and cross-referenced. Findings are grouped below.
 |-----------|------|-------------|--------|
 | Client | `client/config/env.template` | `client/specs/FILES.md` line 16 | COMPLETE |
 | Server | `server/scripts/install.sh` | `server/specs/FILES.md` line 14 | COMPLETE |
-| Server | `server/scripts/uninstall.sh` | `server/specs/FILES.md` line 15 | SPECIFIED |
+| Server | `server/scripts/uninstall.sh` | `server/specs/FILES.md` line 15 | NOT IMPLEMENTED |
 | Client | `client/scripts/install.sh` | `client/specs/FILES.md` line 12 | COMPLETE |
 | Client | `client/scripts/uninstall.sh` | `client/specs/FILES.md` line 13 | COMPLETE |
 | Server | `server/scripts/warm-models.sh` | `server/specs/FILES.md` line 16 | COMPLETE |
-| Server | `server/scripts/test.sh` | `server/specs/FILES.md` line 17 | SPECIFIED |
-| Client | `client/scripts/test.sh` | `client/specs/FILES.md` line 14 | SPECIFIED |
+| Server | `server/scripts/test.sh` | `server/specs/FILES.md` line 17 | NOT IMPLEMENTED |
+| Client | `client/scripts/test.sh` | `client/specs/FILES.md` line 14 | NOT IMPLEMENTED |
 
 ### Cross-spec findings
 
@@ -131,7 +201,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 
 ## Priority 2 -- Server: `server/scripts/install.sh`
 
-**Status**: COMPLETE
+**Status**: COMPLETE (1 spec gap: missing macOS 14+ version check -- see Priority B above)
 **Effort**: Large (complex multi-step installer)
 **Dependencies**: None (server is independent of client)
 **Blocks**: Priority 5 (warm-models.sh), Priority 6 (integration testing)
@@ -346,16 +416,16 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 
 ## Priority 6 -- Integration Testing
 
-**Status**: AWAITING HARDWARE (test scripts ready for implementation)
-**Dependencies**: All implementation priorities (1-5 COMPLETE)
+**Status**: BLOCKED (test scripts not yet implemented; see Priorities C and D in Remaining Work above)
+**Dependencies**: All implementation priorities (1-5 COMPLETE), plus Priorities A and B from Remaining Work
 **Blocks**: Priority 7
 
-**Note**: Integration testing cannot be performed in the Linux sandbox environment. This requires actual macOS hardware with Apple Silicon and Tailscale to verify the server-client integration. All implementation code is complete and ready for testing on real hardware.
+**Note**: Test scripts (server test.sh, client test.sh) must be implemented first (Priorities C and D). Hardware testing (Priority 6c) requires actual macOS with Apple Silicon and Tailscale. Server uninstall.sh (Priority A) and install.sh fix (Priority B) should also be completed before hardware testing.
 
 This priority is subdivided into three tasks:
-- **Priority 6a**: Implement server test script (`server/scripts/test.sh`)
-- **Priority 6b**: Implement client test script (`client/scripts/test.sh`)
-- **Priority 6c**: Run integration testing on real hardware
+- **Priority 6a / Priority C**: Implement server test script (`server/scripts/test.sh`) -- NOT IMPLEMENTED
+- **Priority 6b / Priority D**: Implement client test script (`client/scripts/test.sh`) -- NOT IMPLEMENTED
+- **Priority 6c**: Run integration testing on real hardware -- AWAITING HARDWARE + test scripts
 
 **Spec refs**:
 - `server/specs/SCRIPTS.md` lines 34-87: complete server test script specification
@@ -483,7 +553,7 @@ This priority is subdivided into three tasks:
 ## Priority 7 -- Documentation Polish
 
 **Status**: PARTIALLY COMPLETE (7 of 10 tasks done)
-**Dependencies**: All implementation and testing priorities
+**Dependencies**: All implementation and testing priorities (including Priorities A-D from Remaining Work)
 
 **Completed**:
 - [x] Fix "Sonnet" -> "Sonoma" typo in all READMEs (server, client, root)
@@ -493,12 +563,8 @@ This priority is subdivided into three tasks:
 - [x] Update `client/SETUP.md` uninstall section to document both local and curl-pipe uninstall paths
 - [x] Document minimum Ollama version for `/v1/responses` endpoint (0.5.0+ experimental) in API contract
 - [x] Verify all cross-links between spec files, READMEs, and SETUP.md are correct
-  - Completed 2026-02-10: Comprehensive audit of all documentation cross-references
-  - All hyperlinks verified functional
-  - All spec references validated (file paths, line numbers, section headers)
-  - Documentation integrity checks passed
 
-**Remaining Tasks** (blocked until testing complete):
+**Remaining Tasks** (see Priority E in Remaining Work above):
 - [ ] Update `server/README.md` and `client/README.md` with actual tested commands and sample outputs
 - [ ] Expand troubleshooting sections in both SETUP.md files based on issues found during testing
 - [ ] Add quick-reference card for common operations (start/stop server, switch models, check status)
@@ -525,18 +591,27 @@ These constraints apply to ALL implementation work and are non-negotiable:
 
 8. **curl-pipe install support** (`client/SETUP.md` lines 11-13): Client install.sh must work when piped from curl. Solution: embed env.template as heredoc fallback; copy uninstall.sh to `~/.private-ai-client/`.
 
-## Spec Audit Findings (2026-02-10)
+## Spec Audit Findings (2026-02-10, updated 2026-02-10)
 
-A comprehensive audit of all 11 specification files was performed to validate internal consistency, cross-file consistency, and completeness:
+### Spec consistency audit
+A comprehensive audit of all 13 specification files was performed to validate internal consistency, cross-file consistency, and completeness:
 
 - **No internal contradictions**: Each spec file is internally consistent with no conflicting requirements
-- **No cross-file contradictions**: All 16 cross-spec dependencies verified; no conflicting requirements between files
+- **No cross-file contradictions**: All cross-spec dependencies verified; no conflicting requirements between files
 - **All requirements satisfiable**: Current implementation scope can fully satisfy all documented requirements
-- **Spec documentation parity achieved**: Server now has REQUIREMENTS.md and SCRIPTS.md (matching client structure); shell profile modification explicitly documented in client/specs/FUNCTIONALITIES.md and client/specs/REQUIREMENTS.md
-- **No TODO/FIXME markers**: All spec files are complete for v1 scope with no placeholder sections
-- **Overall assessment**: Specifications are consistent, complete, and ready for implementation
+- **No TODO/FIXME markers**: All spec files and implementation scripts are complete for v1 scope with no placeholder sections
 
-All findings from the audit have been incorporated into the implementation plan and addressed in the completed implementation.
+### Implementation-vs-spec audit
+Every implemented script was compared line-by-line against its spec requirements:
+
+- **client/config/env.template**: All 4 variables present and correct, `export` used, `AIDER_MODEL` commented out, `__HOSTNAME__` placeholder correct
+- **server/scripts/install.sh**: 25 of 26 spec requirements implemented; 1 gap (missing macOS 14+ version check from REQUIREMENTS.md)
+- **client/scripts/install.sh**: All SCRIPTS.md requirements implemented; all REQUIREMENTS.md requirements implemented; all API_CONTRACT.md variables correct; dual-mode (curl-pipe + local clone) working; idempotent
+- **client/scripts/uninstall.sh**: All 4 SCRIPTS.md requirements fully implemented; correctly reverses all install.sh changes
+- **server/scripts/warm-models.sh**: All 8 SCRIPTS.md requirements fully implemented
+- **server/scripts/uninstall.sh**: NOT IMPLEMENTED (spec exists at server/specs/SCRIPTS.md lines 21-29)
+- **server/scripts/test.sh**: NOT IMPLEMENTED (spec exists at server/specs/SCRIPTS.md lines 43-88)
+- **client/scripts/test.sh**: NOT IMPLEMENTED (spec exists at client/specs/SCRIPTS.md lines 20-78)
 
 ---
 

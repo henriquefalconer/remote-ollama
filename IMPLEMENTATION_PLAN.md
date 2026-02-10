@@ -393,7 +393,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 
 ## Priority 7 -- Documentation Polish
 
-**Status**: PARTIALLY COMPLETE (6 of 10 tasks done)
+**Status**: PARTIALLY COMPLETE (7 of 10 tasks done)
 **Dependencies**: All implementation and testing priorities
 
 **Completed**:
@@ -403,12 +403,16 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 - [x] Remove conflicting `brew services restart ollama` from `server/SETUP.md` step 4
 - [x] Update `client/SETUP.md` uninstall section to document both local and curl-pipe uninstall paths
 - [x] Document minimum Ollama version for `/v1/responses` endpoint (0.5.0+ experimental) in API contract
+- [x] Verify all cross-links between spec files, READMEs, and SETUP.md are correct
+  - Completed 2026-02-10: Comprehensive audit of all documentation cross-references
+  - All hyperlinks verified functional
+  - All spec references validated (file paths, line numbers, section headers)
+  - Documentation integrity checks passed
 
 **Remaining Tasks** (blocked until testing complete):
 - [ ] Update `server/README.md` and `client/README.md` with actual tested commands and sample outputs
 - [ ] Expand troubleshooting sections in both SETUP.md files based on issues found during testing
 - [ ] Add quick-reference card for common operations (start/stop server, switch models, check status)
-- [ ] Verify all cross-links between spec files, READMEs, and SETUP.md are correct
 
 ---
 

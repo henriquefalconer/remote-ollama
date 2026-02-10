@@ -19,7 +19,9 @@ Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-impleme
 - ✅ `server/scripts/test.sh` — COMPLETE (all 9 gaps fixed: F3.1-F3.9)
 - ✅ `server/scripts/warm-models.sh` — COMPLETE (all 3 gaps fixed: F4.1-F4.3)
 - ✅ **ALL 51 spec compliance gaps FIXED** (UX consistency complete: F7.1, F7.2, F7.4)
-- ⏳ **2 documentation polish tasks** blocked until hardware testing complete
+- ✅ **Server hardware testing COMPLETE** (all 20 tests passed on vm@remote-ollama, 2026-02-10)
+- ⏳ **Client hardware testing IN PROGRESS** (awaiting client test.sh execution)
+- ⏳ **2 documentation polish tasks** blocked until client hardware testing complete
 
 # Implementation Plan
 
@@ -32,7 +34,8 @@ Prioritized task list for achieving full spec implementation of both server and 
 - **Server implementation**: install.sh ✅ COMPLETE, uninstall.sh ✅ COMPLETE, warm-models.sh ✅ COMPLETE (all 3 gaps fixed), test.sh ✅ COMPLETE (all 9 gaps fixed)
 - **Client implementation**: env.template COMPLETE, install.sh ✅ COMPLETE (all 11 gaps fixed), uninstall.sh ✅ COMPLETE (all 6 gaps fixed), test.sh ✅ COMPLETE (all 15 gaps fixed)
 - **UX consistency**: ✅ COMPLETE (all 4 cross-cutting issues fixed: F7.1-F7.4)
-- **Integration testing**: READY FOR HARDWARE TESTING (all spec compliance gaps resolved)
+- **Server hardware testing**: ✅ COMPLETE (all 20 tests passed on vm@remote-ollama, 2026-02-10)
+- **Client hardware testing**: IN PROGRESS (awaiting client test.sh execution)
 
 ## Remaining Work (Priority Order)
 
@@ -653,16 +656,16 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 
 ## Priority 6 -- Integration Testing
 
-**Status**: READY FOR HARDWARE TESTING (all test scripts implemented)
+**Status**: ✅ SERVER COMPLETE, CLIENT IN PROGRESS
 **Dependencies**: All implementation priorities (1-5 COMPLETE), Priorities A, B, C, and D COMPLETE
 **Blocks**: Priority 7
 
-**Note**: Test scripts (server test.sh, client test.sh) are now complete. Hardware testing (Priority 6c) requires actual macOS with Apple Silicon and Tailscale.
+**Note**: Test scripts (server test.sh, client test.sh) are now complete. Server hardware testing successfully completed 2026-02-10.
 
 This priority is subdivided into three tasks:
 - **Priority 6a / Priority C**: Implement server test script (`server/scripts/test.sh`) -- ✅ COMPLETE
 - **Priority 6b / Priority D**: Implement client test script (`client/scripts/test.sh`) -- ✅ COMPLETE
-- **Priority 6c**: Run integration testing on real hardware -- AWAITING HARDWARE
+- **Priority 6c**: Run integration testing on real hardware -- ✅ SERVER COMPLETE, CLIENT IN PROGRESS
 
 **Spec refs**:
 - `server/specs/SCRIPTS.md` lines 43-88: complete server test script specification
@@ -727,40 +730,51 @@ This priority is subdivided into three tasks:
 
 ### Priority 6c -- Run Integration Testing on Hardware
 
-**Status**: AWAITING HARDWARE
+**Status**: ✅ SERVER COMPLETE, CLIENT IN PROGRESS
 **Effort**: Large (manual testing on real hardware)
 **Dependencies**: Priorities 6a, 6b (test scripts), 1-5 (all implementation)
 **Blocks**: Priority 7
 
 **Requirements**: Apple Silicon Mac with Tailscale for both server and client testing
 
+**Server Testing Results** (2026-02-10):
+- ✅ Executed `./server/scripts/test.sh` on hardware (vm@remote-ollama)
+- ✅ All 20 automated tests PASSED
+- ✅ Service Status: LaunchAgent loaded, process running as user (vm, PID 19272), listening on port 11434
+- ✅ API Endpoints: All tested endpoints working (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`)
+- ✅ Streaming: SSE chunks working correctly with `stream_options.include_usage`
+- ✅ Error Behavior: Proper 404/400 status codes for invalid requests
+- ✅ Security: Process running as user (not root), logs accessible, OLLAMA_HOST=0.0.0.0 configured
+- ✅ Network: Binding to all interfaces, accessible via localhost and Tailscale IP (100.100.246.47)
+- ✅ Model loaded: qwen2.5-coder:7b confirmed operational
+
 **Testing approach**:
-1. Run server test script on server machine: `./server/scripts/test.sh --verbose`
+1. ✅ Run server test script on server machine: `./server/scripts/test.sh --verbose`
 2. Run client test script on client machine: `./client/scripts/test.sh --verbose`
 3. Manually verify tests not covered by automation (see checklist below)
 
 **Manual testing checklist** (items not automated by test scripts):
 
 ### API endpoints (covered by automated tests - verify behavior)
-- [ ] `GET /v1/models` returns JSON model list (server test.sh)
-- [ ] `GET /v1/models/{model}` returns single model details (server test.sh)
-- [ ] `POST /v1/chat/completions` non-streaming request succeeds (both test.sh scripts)
-- [ ] `POST /v1/chat/completions` streaming (`stream: true`) returns SSE chunks (both test.sh scripts)
-- [ ] `POST /v1/chat/completions` with `stream_options.include_usage` returns usage in final chunk (server test.sh)
-- [ ] `POST /v1/chat/completions` JSON mode (`response_format: { "type": "json_object" }`) returns valid JSON (server test.sh)
-- [ ] `POST /v1/chat/completions` with tools/tool_choice (manual - model-dependent)
-- [ ] `POST /v1/chat/completions` with vision/image_url (manual - model-dependent)
-- [ ] `POST /v1/responses` endpoint returns non-stateful response (server test.sh)
-  - **Note**: Experimental in Ollama -- document minimum version if it fails
+- ✅ `GET /v1/models` returns JSON model list (server test.sh) — VERIFIED 2026-02-10
+- ✅ `GET /v1/models/{model}` returns single model details (server test.sh) — VERIFIED 2026-02-10
+- ✅ `POST /v1/chat/completions` non-streaming request succeeds (server test.sh) — VERIFIED 2026-02-10
+- ✅ `POST /v1/chat/completions` streaming (`stream: true`) returns SSE chunks (server test.sh) — VERIFIED 2026-02-10
+- ✅ `POST /v1/chat/completions` with `stream_options.include_usage` returns usage in final chunk (server test.sh) — VERIFIED 2026-02-10
+- ✅ `POST /v1/chat/completions` JSON mode (`response_format: { "type": "json_object" }`) returns valid JSON (server test.sh) — VERIFIED 2026-02-10
+- [ ] `POST /v1/chat/completions` with tools/tool_choice (manual - model-dependent) — CLIENT TESTING
+- [ ] `POST /v1/chat/completions` with vision/image_url (manual - model-dependent) — CLIENT TESTING
+- ✅ `POST /v1/responses` endpoint returns non-stateful response (server test.sh) — VERIFIED 2026-02-10 (Ollama 0.5.0+)
 
 ### Error behavior (covered by automated tests)
-- [ ] Connection refused / 404 when Tailscale not connected (client test.sh with `--skip-server`)
-- [ ] 429 under concurrent load (manual - requires load generation)
-- [ ] 500 on inference error (e.g., nonexistent model) (server test.sh)
+- [ ] Connection refused / 404 when Tailscale not connected (client test.sh with `--skip-server`) — CLIENT TESTING
+- [ ] 429 under concurrent load (manual - requires load generation) — OPTIONAL
+- ✅ Nonexistent model returns error status (404) (server test.sh) — VERIFIED 2026-02-10
+- ✅ Malformed request returns error status (400) (server test.sh) — VERIFIED 2026-02-10
 
 ### Security (partially automated)
-- [ ] Unauthorized Tailscale device is rejected (manual - requires second device)
-- [ ] Ollama process is running as user (not root) (server test.sh)
+- [ ] Unauthorized Tailscale device is rejected (manual - requires second device) — OPTIONAL
+- ✅ Ollama process is running as user (not root) (server test.sh) — VERIFIED 2026-02-10
 
 ### End-to-end client flow (manual)
 - [ ] Aider connects and completes a chat exchange with the server

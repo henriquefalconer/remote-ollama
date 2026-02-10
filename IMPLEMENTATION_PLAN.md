@@ -8,14 +8,16 @@
 All core implementation priorities have been completed and validated:
 
 - ✅ All 5 implementation priorities complete: env.template, server install.sh, client install.sh, client uninstall.sh, warm-models.sh
-- ✅ Spec documentation complete: server now has REQUIREMENTS.md and SCRIPTS.md for parity with client; shell profile modification documented in client specs
+- ✅ Spec documentation complete: server now has REQUIREMENTS.md, SCRIPTS.md, and uninstall.sh spec; shell profile modification documented in client specs
+- ✅ Service management documentation: start/stop/restart commands in README and SETUP for server; client clarifies no daemon
+- ✅ Test script specifications complete: server/specs/SCRIPTS.md and client/specs/SCRIPTS.md document comprehensive test automation
 - ✅ All scripts syntax-checked and tested for bash compliance (set -euo pipefail, no undefined variables)
 - ✅ Executable permissions set on all scripts (755)
 - ✅ Documentation cross-links verified across all spec files, READMEs, and SETUP.md
 - ✅ Spec audit completed: no contradictions, all requirements satisfiable
 - ✅ Tag 0.0.0 created marking initial implementation
 - ✅ Status: Ready for deployment and integration testing on real hardware
-- ⏳ Next steps: Test on Apple Silicon Mac with Tailscale, validate both installation methods (local clone + curl-pipe), verify end-to-end Aider workflow
+- ⏳ Next steps: Implement test scripts (Priority 6a/6b), test on Apple Silicon Mac with Tailscale, validate both installation methods (local clone + curl-pipe), verify end-to-end Aider workflow
 
 # Implementation Plan
 
@@ -23,11 +25,11 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 ## Current Status
 
-- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files)
-- **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README)
-- **Server implementation**: COMPLETE (install.sh COMPLETE, warm-models.sh COMPLETE)
-- **Client implementation**: COMPLETE (env.template COMPLETE, scripts COMPLETE)
-- **Integration testing**: READY (all implementation complete)
+- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files, now includes test script specs)
+- **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README, includes service management)
+- **Server implementation**: COMPLETE (install.sh COMPLETE, uninstall.sh SPECIFIED, warm-models.sh COMPLETE, test.sh SPECIFIED)
+- **Client implementation**: COMPLETE (env.template COMPLETE, install.sh COMPLETE, uninstall.sh COMPLETE, test.sh SPECIFIED)
+- **Integration testing**: READY (Priority 6a/6b test scripts specified; Priority 6c awaiting hardware)
 
 ## Spec Audit Summary
 
@@ -38,10 +40,13 @@ Every spec file was read and cross-referenced. Findings are grouped below.
 | Component | File | Spec Source | Status |
 |-----------|------|-------------|--------|
 | Client | `client/config/env.template` | `client/specs/FILES.md` line 16 | COMPLETE |
-| Server | `server/scripts/install.sh` | `server/specs/FILES.md` line 12 | COMPLETE |
+| Server | `server/scripts/install.sh` | `server/specs/FILES.md` line 14 | COMPLETE |
+| Server | `server/scripts/uninstall.sh` | `server/specs/FILES.md` line 15 | SPECIFIED |
 | Client | `client/scripts/install.sh` | `client/specs/FILES.md` line 12 | COMPLETE |
 | Client | `client/scripts/uninstall.sh` | `client/specs/FILES.md` line 13 | COMPLETE |
-| Server | `server/scripts/warm-models.sh` | `server/specs/FILES.md` line 13 | COMPLETE |
+| Server | `server/scripts/warm-models.sh` | `server/specs/FILES.md` line 16 | COMPLETE |
+| Server | `server/scripts/test.sh` | `server/specs/FILES.md` line 17 | SPECIFIED |
+| Client | `client/scripts/test.sh` | `client/specs/FILES.md` line 14 | SPECIFIED |
 
 ### Cross-spec findings
 
@@ -84,10 +89,13 @@ Every spec file was read and cross-referenced. Findings are grouped below.
 3. **Client install.sh** -- depends on env.template; can be tested independently of server (connectivity test warns but does not abort)
 4. **Client uninstall.sh** -- must exactly reverse what install.sh creates
 5. **Server warm-models.sh** -- optional enhancement; depends on server being installed
-6. **Integration testing** -- requires 1-5 to be complete
+6. **Integration testing** -- now subdivided into three tasks:
+   - **6a: Server test.sh** -- automated test suite for server functionality; depends on Priority 2
+   - **6b: Client test.sh** -- automated test suite for client functionality; depends on Priority 3
+   - **6c: Hardware testing** -- run test scripts and manual tests on real hardware; depends on 6a, 6b, and 1-5
 7. **Documentation polish** -- requires 1-6 to validate accuracy
 
-This ordering is optimal because: (a) the trivial file is first to unblock downstream work; (b) server and client install scripts are independent and could theoretically be parallelized, but server is listed first because it has zero dependencies while client depends on Priority 1; (c) uninstall.sh must be written after install.sh to ensure exact reversal; (d) warm-models.sh is optional and can be deferred.
+This ordering is optimal because: (a) the trivial file is first to unblock downstream work; (b) server and client install scripts are independent and could theoretically be parallelized, but server is listed first because it has zero dependencies while client depends on Priority 1; (c) uninstall.sh must be written after install.sh to ensure exact reversal; (d) warm-models.sh is optional and can be deferred; (e) test scripts provide automated validation before manual hardware testing.
 
 ---
 
@@ -338,75 +346,137 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 
 ## Priority 6 -- Integration Testing
 
-**Status**: AWAITING HARDWARE
+**Status**: AWAITING HARDWARE (test scripts ready for implementation)
 **Dependencies**: All implementation priorities (1-5 COMPLETE)
 **Blocks**: Priority 7
 
 **Note**: Integration testing cannot be performed in the Linux sandbox environment. This requires actual macOS hardware with Apple Silicon and Tailscale to verify the server-client integration. All implementation code is complete and ready for testing on real hardware.
 
+This priority is subdivided into three tasks:
+- **Priority 6a**: Implement server test script (`server/scripts/test.sh`)
+- **Priority 6b**: Implement client test script (`client/scripts/test.sh`)
+- **Priority 6c**: Run integration testing on real hardware
+
 **Spec refs**:
+- `server/specs/SCRIPTS.md` lines 34-87: complete server test script specification
+- `client/specs/SCRIPTS.md` lines 20-77: complete client test script specification
 - `client/specs/API_CONTRACT.md` lines 17-26: supported endpoints
 - `client/specs/API_CONTRACT.md` lines 46-51: error behavior
 - `server/specs/FUNCTIONALITIES.md` lines 6-13: API capabilities
 - `server/specs/SECURITY.md` lines 11-12: Tailscale ACL enforcement
 
-**Manual testing checklist** (run from an authorized client machine):
+---
 
-### API endpoints
-- [ ] `GET /v1/models` returns JSON model list
-  - Ref: `client/specs/API_CONTRACT.md` line 24
-- [ ] `GET /v1/models/{model}` returns single model details
-  - Ref: `client/specs/API_CONTRACT.md` line 25
-- [ ] `POST /v1/chat/completions` non-streaming request succeeds
-  - Ref: `client/specs/API_CONTRACT.md` line 23
-- [ ] `POST /v1/chat/completions` streaming (`stream: true`) returns SSE chunks
-  - Ref: `client/specs/API_CONTRACT.md` line 23
-- [ ] `POST /v1/chat/completions` with `stream_options.include_usage` returns usage in final chunk
-  - Ref: `client/specs/API_CONTRACT.md` line 33
-- [ ] `POST /v1/chat/completions` JSON mode (`response_format: { "type": "json_object" }`) returns valid JSON
-  - Ref: `client/specs/API_CONTRACT.md` line 23
-- [ ] `POST /v1/chat/completions` with tools/tool_choice (if model supports)
-  - Ref: `client/specs/API_CONTRACT.md` line 23
-- [ ] `POST /v1/chat/completions` with vision/image_url (if model supports)
-  - Ref: `client/specs/API_CONTRACT.md` line 23
-- [ ] `POST /v1/responses` endpoint returns non-stateful response
-  - Ref: `client/specs/API_CONTRACT.md` line 26
+### Priority 6a -- Server: `server/scripts/test.sh`
+
+**Status**: NOT STARTED
+**Effort**: Medium (comprehensive test automation)
+**Dependencies**: Priority 2 (server install.sh)
+**Blocks**: Priority 6c
+
+**Spec refs**:
+- `server/specs/SCRIPTS.md` lines 34-87: complete test.sh behavior specification
+- `server/specs/FILES.md` line 16: file location
+
+**Tasks**:
+- [ ] Create comprehensive server test script
+- [ ] Test service status (LaunchAgent loaded, process running, listening on port)
+- [ ] Test all API endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`)
+- [ ] Test streaming and non-streaming chat completions
+- [ ] Test JSON mode and stream options
+- [ ] Test error behavior (nonexistent model, malformed requests)
+- [ ] Test security (process owner, log files, plist configuration)
+- [ ] Test network binding (0.0.0.0, localhost, Tailscale IP)
+- [ ] Implement pass/fail reporting with summary
+- [ ] Support `--verbose`, `--skip-model-tests` flags
+- [ ] Colorized output (green/red/yellow)
+- [ ] Exit code 0 on success, non-zero on failure
+
+---
+
+### Priority 6b -- Client: `client/scripts/test.sh`
+
+**Status**: NOT STARTED
+**Effort**: Medium (comprehensive test automation)
+**Dependencies**: Priority 3 (client install.sh)
+**Blocks**: Priority 6c
+
+**Spec refs**:
+- `client/specs/SCRIPTS.md` lines 20-77: complete test.sh behavior specification
+- `client/specs/FILES.md` line 14: file location
+
+**Tasks**:
+- [ ] Create comprehensive client test script
+- [ ] Test environment configuration (env file exists, all vars set, shell profile sourcing)
+- [ ] Test dependencies (Tailscale, Homebrew, Python, pipx, Aider)
+- [ ] Test connectivity to server (all API endpoints)
+- [ ] Test API contract validation (endpoint formats, response schemas)
+- [ ] Test Aider integration (binary in PATH, environment vars readable)
+- [ ] Test script behavior (install idempotency, uninstall availability)
+- [ ] Implement pass/fail reporting with summary
+- [ ] Support `--verbose`, `--skip-server`, `--skip-aider`, `--quick` flags
+- [ ] Colorized output (green/red/yellow)
+- [ ] Exit code 0 on success, non-zero on failure
+
+---
+
+### Priority 6c -- Run Integration Testing on Hardware
+
+**Status**: AWAITING HARDWARE
+**Effort**: Large (manual testing on real hardware)
+**Dependencies**: Priorities 6a, 6b (test scripts), 1-5 (all implementation)
+**Blocks**: Priority 7
+
+**Requirements**: Apple Silicon Mac with Tailscale for both server and client testing
+
+**Testing approach**:
+1. Run server test script on server machine: `./server/scripts/test.sh --verbose`
+2. Run client test script on client machine: `./client/scripts/test.sh --verbose`
+3. Manually verify tests not covered by automation (see checklist below)
+
+**Manual testing checklist** (items not automated by test scripts):
+
+### API endpoints (covered by automated tests - verify behavior)
+- [ ] `GET /v1/models` returns JSON model list (server test.sh)
+- [ ] `GET /v1/models/{model}` returns single model details (server test.sh)
+- [ ] `POST /v1/chat/completions` non-streaming request succeeds (both test.sh scripts)
+- [ ] `POST /v1/chat/completions` streaming (`stream: true`) returns SSE chunks (both test.sh scripts)
+- [ ] `POST /v1/chat/completions` with `stream_options.include_usage` returns usage in final chunk (server test.sh)
+- [ ] `POST /v1/chat/completions` JSON mode (`response_format: { "type": "json_object" }`) returns valid JSON (server test.sh)
+- [ ] `POST /v1/chat/completions` with tools/tool_choice (manual - model-dependent)
+- [ ] `POST /v1/chat/completions` with vision/image_url (manual - model-dependent)
+- [ ] `POST /v1/responses` endpoint returns non-stateful response (server test.sh)
   - **Note**: Experimental in Ollama -- document minimum version if it fails
 
-### Error behavior
-- [ ] Connection refused / 404 when Tailscale not connected
-  - Ref: `client/specs/API_CONTRACT.md` line 48
-- [ ] 429 under concurrent load (if reproducible)
-  - Ref: `client/specs/API_CONTRACT.md` line 49
-- [ ] 500 on inference error (e.g., nonexistent model)
-  - Ref: `client/specs/API_CONTRACT.md` line 50
+### Error behavior (covered by automated tests)
+- [ ] Connection refused / 404 when Tailscale not connected (client test.sh with `--skip-server`)
+- [ ] 429 under concurrent load (manual - requires load generation)
+- [ ] 500 on inference error (e.g., nonexistent model) (server test.sh)
 
-### Security
-- [ ] Unauthorized Tailscale device is rejected
-  - Ref: `server/specs/SECURITY.md` lines 11-12
-- [ ] Ollama process is running as user (not root)
-  - Ref: `server/specs/SECURITY.md` line 24
+### Security (partially automated)
+- [ ] Unauthorized Tailscale device is rejected (manual - requires second device)
+- [ ] Ollama process is running as user (not root) (server test.sh)
 
-### End-to-end client flow
+### End-to-end client flow (manual)
 - [ ] Aider connects and completes a chat exchange with the server
   - Ref: `client/specs/FUNCTIONALITIES.md` lines 12-13
 - [ ] Any OpenAI-compatible tool using `OPENAI_API_BASE` + `OPENAI_API_KEY` works
   - Ref: `client/specs/FUNCTIONALITIES.md` line 13
 
-### Script behavior
-- [ ] Client install.sh works via curl-pipe method
+### Script behavior (partially automated)
+- [ ] Client install.sh works via curl-pipe method (manual)
   - Ref: `client/SETUP.md` lines 11-13
-- [ ] Client install.sh works from local clone
+- [ ] Client install.sh works from local clone (manual)
   - Ref: `client/SETUP.md` lines 20-23
-- [ ] Client uninstall.sh cleanly removes all client-side changes
+- [ ] Client uninstall.sh cleanly removes all client-side changes (manual with pre/post test.sh runs)
   - Ref: `client/specs/SCRIPTS.md` lines 14-18
-- [ ] Re-running client install.sh (idempotency) does not break existing setup
-- [ ] Re-running server install.sh (idempotency) does not break existing setup
-- [ ] Re-running uninstall.sh on already-clean system does not error
-- [ ] Warm-models.sh pulls and loads models correctly
+- [ ] Re-running client install.sh (idempotency) does not break existing setup (client test.sh checks)
+- [ ] Re-running server install.sh (idempotency) does not break existing setup (server test.sh checks)
+- [ ] Re-running uninstall.sh on already-clean system does not error (manual)
+- [ ] Warm-models.sh pulls and loads models correctly (manual)
   - Ref: `server/specs/FUNCTIONALITIES.md` line 17
-- [ ] Warm-models.sh continues on individual model failure
-- [ ] `OPENAI_API_BASE` works with generic OpenAI-compatible tool (not just Aider)
+- [ ] Warm-models.sh continues on individual model failure (manual)
+- [ ] `OPENAI_API_BASE` works with generic OpenAI-compatible tool (not just Aider) (manual)
 
 ---
 

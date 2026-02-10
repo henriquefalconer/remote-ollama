@@ -48,13 +48,30 @@ The server guarantees:
 
 ## Usage
 
+The client has **no persistent daemon or background service**. It only configures environment variables that tools use to connect to the server.
+
+### Running Aider
+
 After installation, simply run:
 ```bash
 aider                     # interactive mode
 aider --yes               # YOLO mode
 ```
 
-Any tool that supports custom OpenAI base URLs will work automatically.
+Aider automatically reads the environment variables and connects to your private server.
+
+### Using Other Tools
+
+Any tool that supports custom OpenAI base URLs will work automatically:
+```bash
+# Environment variables are already set
+echo $OPENAI_API_BASE    # http://private-ai-server:11434/v1
+echo $OPENAI_API_KEY     # ollama
+```
+
+### No Service Management Required
+
+Unlike the server, the client requires no start/stop/restart commands. Simply invoke tools when needed.
 
 ## Uninstallation
 

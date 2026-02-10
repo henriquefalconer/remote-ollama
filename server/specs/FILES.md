@@ -13,7 +13,8 @@ server/
 ├── scripts/
 │   ├── install.sh             # One-time setup script for server machine
 │   ├── uninstall.sh           # Remove server-side LaunchAgent and plist
-│   └── warm-models.sh         # Optional: pre-load models at boot / startup
+│   ├── warm-models.sh         # Optional: pre-load models at boot / startup
+│   └── test.sh                # Comprehensive server functionality tests
 ├── SETUP.md                   # Setup instructions
 └── README.md                  # Overview and quick start
 ```

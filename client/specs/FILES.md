@@ -11,7 +11,8 @@ client/
 │   └── FILES.md
 ├── scripts/
 │   ├── install.sh
-│   └── uninstall.sh
+│   ├── uninstall.sh
+│   └── test.sh                # Comprehensive client functionality tests
 ├── config/
 │   └── env.template
 ├── SETUP.md

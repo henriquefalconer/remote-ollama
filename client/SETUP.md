@@ -60,10 +60,27 @@ curl $OLLAMA_API_BASE/models
 
 ## Usage
 
+The client has **no persistent service or daemon**. It only configures environment variables.
+
+### Run Aider
 ```bash
 aider                     # interactive mode - uses server automatically
 aider --yes               # YOLO mode
 ```
+
+### Check Configuration
+```bash
+# Verify environment variables are set
+echo $OPENAI_API_BASE    # Should show: http://private-ai-server:11434/v1
+echo $OPENAI_API_KEY     # Should show: ollama
+
+# Test connectivity (requires server access)
+curl $OPENAI_API_BASE/models
+```
+
+### No Service Management Needed
+
+There's nothing to start, stop, or restart on the client side. Just run tools when you need them.
 
 ## Uninstall
 

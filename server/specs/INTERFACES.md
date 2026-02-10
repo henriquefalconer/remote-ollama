@@ -11,6 +11,18 @@
 - Environment variables (primarily OLLAMA_HOST)
 - launchd plist for service persistence
 
+## Service Management Interface
+
+The Ollama service runs as a user-level LaunchAgent and is managed via launchctl:
+
+- **Check status**: `launchctl list | grep com.ollama`
+- **Start**: `launchctl kickstart gui/$(id -u)/com.ollama`
+- **Stop**: `launchctl stop gui/$(id -u)/com.ollama`
+- **Restart**: `launchctl kickstart -k gui/$(id -u)/com.ollama`
+- **Disable**: `launchctl bootout gui/$(id -u)/com.ollama`
+- **Re-enable**: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist`
+- **View logs**: `tail -f /tmp/ollama.stdout.log` or `/tmp/ollama.stderr.log`
+
 ## Management Interface (minimal)
 
 - Tailscale admin console (external to this monorepo) for ACLs and device approval

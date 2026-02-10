@@ -53,6 +53,58 @@ Quick summary:
 4. Pull desired models
 5. Verify connectivity from client
 
+## Operations
+
+Once installed, the Ollama service runs as a LaunchAgent and starts automatically at login.
+
+### Check Status
+```bash
+# Check if Ollama service is running
+launchctl list | grep com.ollama
+
+# Test API endpoint
+curl -sf http://localhost:11434/v1/models
+```
+
+### Start Service
+```bash
+# Start the service (if stopped)
+launchctl kickstart gui/$(id -u)/com.ollama
+```
+
+### Stop Service
+```bash
+# Stop the service temporarily
+launchctl stop gui/$(id -u)/com.ollama
+```
+
+### Restart Service
+```bash
+# Restart the service (kill and restart immediately)
+launchctl kickstart -k gui/$(id -u)/com.ollama
+```
+
+### Disable Service (Prevent Auto-Start)
+```bash
+# Unload the service completely
+launchctl bootout gui/$(id -u)/com.ollama
+```
+
+### Re-enable Service
+```bash
+# Load the service again
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
+```
+
+### View Logs
+```bash
+# Standard output
+tail -f /tmp/ollama.stdout.log
+
+# Error output
+tail -f /tmp/ollama.stderr.log
+```
+
 ## Security
 
 See [specs/SECURITY.md](specs/SECURITY.md) for the complete security model.

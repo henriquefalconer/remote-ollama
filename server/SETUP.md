@@ -109,3 +109,64 @@ curl http://private-ai-server:11434/v1/chat/completions \
 ## Server is now operational
 
 Clients must join the same tailnet and receive the appropriate tag to connect.
+
+## Managing the Ollama Service
+
+The Ollama service runs as a user-level LaunchAgent and starts automatically at login.
+
+### Check Status
+```bash
+# Check if service is loaded
+launchctl list | grep com.ollama
+
+# Test API availability
+curl -sf http://localhost:11434/v1/models
+```
+
+### Start Service
+```bash
+# The service starts automatically, but you can manually start it with:
+launchctl kickstart gui/$(id -u)/com.ollama
+```
+
+### Stop Service
+```bash
+# Temporarily stop the service (will restart on next login)
+launchctl stop gui/$(id -u)/com.ollama
+```
+
+### Restart Service
+```bash
+# Kill and immediately restart the service
+launchctl kickstart -k gui/$(id -u)/com.ollama
+```
+
+### Disable Service (Prevent Auto-Start)
+```bash
+# Completely unload the service
+launchctl bootout gui/$(id -u)/com.ollama
+```
+
+### Re-enable Service
+```bash
+# Load the service again
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
+```
+
+### View Logs
+```bash
+# Monitor standard output
+tail -f /tmp/ollama.stdout.log
+
+# Monitor errors
+tail -f /tmp/ollama.stderr.log
+```
+
+### Check Current Models
+```bash
+# List all pulled models
+ollama list
+
+# Pull a new model
+ollama pull <model-name>
+```

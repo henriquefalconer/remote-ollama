@@ -6,6 +6,8 @@
 - Uninstaller that removes only server-side LaunchAgent configuration
 - Ollama serves OpenAI-compatible HTTP endpoint at `/v1`
 - Optional model pre-warming script for boot-time loading
+- Comprehensive test script for automated validation of all server functionality
+- Service management via standard launchctl commands (start/stop/restart/status)
 
 ## Exposed API
 

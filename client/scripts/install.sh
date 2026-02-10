@@ -367,29 +367,86 @@ fi
 
 section_break "Tool Installation"
 
-# Step 10: Install pipx
+# Step 10: Install pipx with Python version compatibility check
 info "Checking for pipx..."
+PIPX_NEEDS_REINSTALL=false
+
 if ! command -v pipx &> /dev/null; then
     info "Installing pipx via Homebrew (this may take a minute)..."
     brew install pipx > /tmp/pipx-install.log 2>&1 || fatal "Failed to install pipx"
     info "✓ pipx installed"
 else
     info "✓ pipx already installed"
+
+    # Check if pipx's shared environment uses incompatible Python version
+    if [[ -d "$HOME/.local/pipx/shared" ]]; then
+        PIPX_SHARED_PYTHON="$HOME/.local/pipx/shared/bin/python"
+        if [[ -x "$PIPX_SHARED_PYTHON" ]]; then
+            PIPX_PYTHON_VERSION=$($PIPX_SHARED_PYTHON --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+            PIPX_PYTHON_MINOR=$(echo "$PIPX_PYTHON_VERSION" | cut -d. -f2)
+
+            # Python 3.14+ causes compatibility issues with Aider dependencies
+            if [[ "$PIPX_PYTHON_MINOR" -ge 14 ]]; then
+                warn "pipx is using Python $PIPX_PYTHON_VERSION which has compatibility issues with Aider"
+                echo ""
+                echo "Python 3.14+ doesn't have pre-built wheels for some Aider dependencies (numpy 1.24.x)."
+                echo "We need to reinstall pipx to use Python $PYTHON_VERSION instead."
+                echo ""
+                prompt "Reinstall pipx with Python $PYTHON_VERSION for compatibility? [Y/n]:"
+                read -r REINSTALL_PIPX
+                REINSTALL_PIPX=${REINSTALL_PIPX:-Y}
+
+                if [[ "$REINSTALL_PIPX" =~ ^[Yy]$ ]]; then
+                    PIPX_NEEDS_REINSTALL=true
+                else
+                    warn "Continuing with Python $PIPX_PYTHON_VERSION - Aider installation may fail"
+                fi
+            else
+                info "✓ pipx is using compatible Python $PIPX_PYTHON_VERSION"
+            fi
+        fi
+    fi
+fi
+
+# Reinstall pipx if needed for compatibility
+if [[ "$PIPX_NEEDS_REINSTALL" == "true" ]]; then
+    info "Reinstalling pipx with Python $PYTHON_VERSION..."
+
+    # Remove existing pipx shared environment
+    if [[ -d "$HOME/.local/pipx/shared" ]]; then
+        rm -rf "$HOME/.local/pipx/shared"
+        info "✓ Removed old pipx shared environment"
+    fi
+
+    # Uninstall all pipx packages (they'll be reinstalled)
+    if pipx list 2>/dev/null | grep -q "venvs"; then
+        warn "Uninstalling existing pipx packages (will be reinstalled)..."
+        pipx uninstall-all 2>/dev/null || true
+    fi
+
+    # Reinstall pipx via Homebrew
+    brew reinstall pipx > /tmp/pipx-reinstall.log 2>&1 || fatal "Failed to reinstall pipx"
+    info "✓ pipx reinstalled"
 fi
 
 # Always run ensurepath to ensure PATH is configured
 info "Running pipx ensurepath..."
+export PIPX_DEFAULT_PYTHON="$PYTHON_PATH"
 pipx ensurepath || warn "pipx ensurepath failed (non-fatal)"
 
 # Step 11: Install Aider with specific Python version
 info "Checking for Aider..."
+
+# Ensure pipx uses the correct Python version
+export PIPX_DEFAULT_PYTHON="$PYTHON_PATH"
+
 if pipx list 2>/dev/null | grep -q aider-chat; then
     info "✓ Aider already installed, upgrading..."
     pipx upgrade aider-chat > /tmp/aider-upgrade.log 2>&1 || warn "Failed to upgrade Aider (non-fatal)"
 else
     info "Installing Aider via pipx with Python $PYTHON_VERSION (this may take a few minutes)..."
     # Use specific Python version to avoid compatibility issues
-    if pipx install aider-chat --python "$PYTHON_PATH" > /tmp/aider-install.log 2>&1; then
+    if PIPX_DEFAULT_PYTHON="$PYTHON_PATH" pipx install aider-chat --python "$PYTHON_PATH" > /tmp/aider-install.log 2>&1; then
         info "✓ Aider installed successfully"
     else
         error "Failed to install Aider"
@@ -401,7 +458,7 @@ else
         echo "  • Disk space or permissions"
         echo ""
         echo "To debug, check the log file or try manually:"
-        echo "  pipx install aider-chat --python $PYTHON_PATH --verbose"
+        echo "  PIPX_DEFAULT_PYTHON=$PYTHON_PATH pipx install aider-chat --python $PYTHON_PATH --verbose"
         echo ""
         fatal "Aider installation failed"
     fi

@@ -54,21 +54,39 @@ else
     warn "pipx not found, skipping Aider removal"
 fi
 
-# Step 2: Remove shell profile sourcing lines
+# Step 2: Remove shell profile sourcing lines and v2+ aliases
 info "Cleaning shell profile(s)..."
 
+# v1 markers (environment sourcing)
 MARKER_START="# >>> ai-client >>>"
 MARKER_END="# <<< ai-client <<<"
+
+# v2+ markers (Claude Code alias)
+CLAUDE_MARKER_START="# >>> claude-ollama >>>"
+CLAUDE_MARKER_END="# <<< claude-ollama <<<"
+
 REMOVED_COUNT=0
 
 # Clean both zsh and bash profiles (user may have switched shells)
 for PROFILE in "$HOME/.zshrc" "$HOME/.bashrc"; do
     if [[ -f "$PROFILE" ]]; then
+        PROFILE_MODIFIED=false
+
+        # Remove v1 markers (environment sourcing)
         if grep -q "$MARKER_START" "$PROFILE"; then
-            # Remove everything between markers (inclusive)
-            # Use sed with temporary file for portability
             sed -i.bak "/$MARKER_START/,/$MARKER_END/d" "$PROFILE"
             rm -f "$PROFILE.bak"
+            PROFILE_MODIFIED=true
+        fi
+
+        # Remove v2+ markers (Claude Code alias)
+        if grep -q "$CLAUDE_MARKER_START" "$PROFILE"; then
+            sed -i.bak "/$CLAUDE_MARKER_START/,/$CLAUDE_MARKER_END/d" "$PROFILE"
+            rm -f "$PROFILE.bak"
+            PROFILE_MODIFIED=true
+        fi
+
+        if [[ "$PROFILE_MODIFIED" == "true" ]]; then
             info "✓ Cleaned: $PROFILE"
             REMOVED_COUNT=$((REMOVED_COUNT + 1))
         fi

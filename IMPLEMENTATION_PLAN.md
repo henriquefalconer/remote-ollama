@@ -540,7 +540,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
   # ai-client environment configuration
   # Source: client/specs/API_CONTRACT.md
   # Generated from env.template by install.sh -- do not edit manually
-  export OLLAMA_API_BASE=http://__HOSTNAME__:11434/v1
+  export OLLAMA_API_BASE=http://__HOSTNAME__:11434
   export OPENAI_API_BASE=http://__HOSTNAME__:11434/v1
   export OPENAI_API_KEY=ollama
   # export AIDER_MODEL=ollama/<model-name>
@@ -978,6 +978,7 @@ Every implemented script was compared line-by-line against its spec requirements
 # v2+ Implementation Plan (Claude Code / Anthropic API)
 
 **Created**: 2026-02-10
+**Last Updated**: 2026-02-10 (second audit pass -- added H2-6, H3-4, H3-5, H4-1; updated H3-1)
 **Status**: NOT STARTED
 **Scope**: All work required to achieve full spec implementation beyond v1 (Aider/OpenAI)
 
@@ -989,8 +990,9 @@ Every implemented script was compared line-by-line against its spec requirements
 | Server v2+ (Anthropic API) | PARTIALLY COMPLETE | Spec exists, no `/v1/messages` tests in test.sh, SCRIPTS.md does not specify them |
 | Client v1 (Aider) | COMPLETE | All scripts, 28 tests, docs |
 | Client v2+ (Claude Code) | NOT IMPLEMENTED | 3 new scripts missing, 4 existing scripts need v2+ enhancements |
-| Root-level analytics | PARTIALLY COMPLETE | Scripts exist, partial run data in `analytics/` |
-| Documentation | NEEDS CORRECTION | Client README.md references non-existent scripts without disclaimer |
+| Root-level analytics | PARTIALLY COMPLETE | Scripts exist but have divide-by-zero bugs; missing spec-required decision matrix output |
+| Documentation | NEEDS CORRECTION | Client README.md references non-existent scripts; server/client SETUP.md missing v2+ content; SCRIPTS.md missing v2+ test requirements and VERSION_MANAGEMENT.md cross-reference |
+| Plan internal consistency | ✅ FIXED | Priority 1 env.template example corrected (removed stale `/v1` URL) |
 
 ## Prioritized Implementation Items
 
@@ -1169,23 +1171,52 @@ Every implemented script was compared line-by-line against its spec requirements
   8. `.version-lock` file format validation (if file exists)
   - Update `TOTAL_TESTS` counter
 - **Spec references**: `client/specs/SCRIPTS.md` lines 61-138, `client/specs/CLAUDE_CODE.md` lines 119-131 (tool use capabilities), `client/specs/API_CONTRACT.md` lines 75-164 (Anthropic API contract)
-- **Dependencies**: H1-3 (server tests should pass first), H1-4 (install creates what we test), H2-1/H2-2/H2-3 (version scripts must exist)
+- **Dependencies**: H2-6 (client SCRIPTS.md spec must specify v2+ test requirements first), H1-3 (server tests should pass first), H1-4 (install creates what we test), H2-1/H2-2/H2-3 (version scripts must exist)
 - **Effort**: Medium (8-10 new tests following existing patterns)
 
 ---
 
-### H3-1: Validate analytics infrastructure completeness
+### H2-6: Update client/specs/SCRIPTS.md to add v2+ test requirements and cross-references
 
-- **Priority**: H3 (nice-to-have -- analytics scripts already exist and partially work)
-- **What**: `loop-with-analytics.sh`, `compare-analytics.sh`, and `ANALYTICS_README.md` all exist at the project root. The `analytics/` directory has one partial run (`run-20260210-064148`). Per `client/specs/ANALYTICS.md`, these should be validated against the spec to confirm they capture all specified metrics (tool counts, token usage, cache hit rates, workload classification). No new scripts need to be created.
+- **Priority**: H2 (spec gap -- must be closed before implementing v2+ client tests in H2-5)
+- **What**: `client/specs/SCRIPTS.md` only specifies test.sh requirements for v1 (Aider/OpenAI connectivity tests). It does not specify any Claude Code integration tests or Anthropic API connectivity tests. Additionally, it only lists `install.sh`, `uninstall.sh`, and `test.sh` without referencing the v2+ scripts (`check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`) which are fully specified in `client/specs/VERSION_MANAGEMENT.md`.
 - **Action**:
-  1. Audit `loop-with-analytics.sh` against `client/specs/ANALYTICS.md` lines 424-438 (implementation requirements)
-  2. Audit `compare-analytics.sh` against `client/specs/ANALYTICS.md` lines 440-454 (comparison tool requirements)
-  3. Validate that `analytics/run-*/summary.md` format matches spec (lines 168-227)
-  4. Document any gaps and fix if present
-- **Spec references**: `client/specs/ANALYTICS.md` (entire file), `client/specs/FUNCTIONALITIES.md` lines 22-37
+  1. Add a new "Claude Code Integration Tests (v2+)" subsection to the test.sh section, specifying:
+     - Claude Code binary detection test
+     - `claude-ollama` alias presence test
+     - `POST /v1/messages` non-streaming connectivity test
+     - `POST /v1/messages` streaming SSE test
+     - `--skip-claude` flag to skip these tests when Claude Code is not installed
+  2. Add a new "Version Management Tests (v2+)" subsection specifying:
+     - Script existence and syntax validation tests for check-compatibility.sh, pin-versions.sh, downgrade-claude.sh
+     - `.version-lock` file format validation test
+  3. Add a "v2+ Scripts" section or note at the top of SCRIPTS.md that cross-references `VERSION_MANAGEMENT.md` for the full specification of check-compatibility.sh, pin-versions.sh, and downgrade-claude.sh
+- **Spec references**: `client/specs/SCRIPTS.md` (entire file), `client/specs/VERSION_MANAGEMENT.md` (v2+ script specs), `client/specs/CLAUDE_CODE.md` lines 119-131 (tool use capabilities)
 - **Dependencies**: None
-- **Effort**: Small-medium (audit + potential fixes)
+- **Effort**: Small (spec text only, no code)
+
+---
+
+### H3-1: Fix analytics bugs and implement missing spec features
+
+- **Priority**: H3 (nice-to-have -- analytics scripts already exist and partially work, but have correctness issues)
+- **What**: `loop-with-analytics.sh`, `compare-analytics.sh`, and `ANALYTICS_README.md` all exist at the project root. The `analytics/` directory has one partial run (`run-20260210-064148`). Audit has identified three categories of issues:
+  1. **Divide-by-zero bugs**: `loop-with-analytics.sh` line 494 computes `AVG_SUBAGENTS=$((SUB1 / ITER1))` which will crash if no iterations complete (ITER1=0). Similarly, `compare-analytics.sh` lines 88-104 perform division operations that will fail if a run has 0 iterations.
+  2. **Missing decision matrix**: Per `client/specs/ANALYTICS.md` lines 474-485, `compare-analytics.sh` should auto-generate "Keep Anthropic" vs "Consider Ollama" recommendations based on mode (plan/build) and performance thresholds. This is not implemented.
+  3. **Missing mode-specific recommendations**: The spec requires that plan mode should always recommend Anthropic (due to reasoning complexity), while build mode should use conditional logic based on cost/latency/quality thresholds to determine if Ollama is a viable alternative.
+- **Action**:
+  1. Fix divide-by-zero in `loop-with-analytics.sh`: guard `AVG_SUBAGENTS` computation with `if [ "$ITER1" -gt 0 ]; then ... else AVG_SUBAGENTS=0; fi`
+  2. Fix divide-by-zero in `compare-analytics.sh`: guard all division operations in lines 88-104 with zero-iteration checks
+  3. Implement decision matrix output in `compare-analytics.sh` per `client/specs/ANALYTICS.md` lines 474-485:
+     - Accept or detect mode (plan vs build) from run metadata
+     - For plan mode: always output "Recommendation: Keep Anthropic (reasoning-intensive workload)"
+     - For build mode: compare metrics against thresholds and output "Consider Ollama" or "Keep Anthropic" with rationale
+  4. Audit remaining metrics capture against `client/specs/ANALYTICS.md` lines 424-438 (implementation requirements)
+  5. Validate that `analytics/run-*/summary.md` format matches spec (lines 168-227)
+  6. Document any additional gaps and fix if present
+- **Spec references**: `client/specs/ANALYTICS.md` (entire file, especially lines 424-438, 440-454, 474-485), `client/specs/FUNCTIONALITIES.md` lines 22-37
+- **Dependencies**: None
+- **Effort**: Medium (bug fixes are small, but decision matrix implementation requires new logic)
 
 ---
 
@@ -1223,55 +1254,110 @@ Every implemented script was compared line-by-line against its spec requirements
 
 ---
 
+### H3-4: Update server/SETUP.md to document Anthropic API
+
+- **Priority**: H3 (documentation gap -- server setup guide is incomplete for v2+)
+- **What**: `server/SETUP.md` only documents OpenAI API setup (endpoint testing examples use `/v1/chat/completions` and `/v1/models`). There is no mention of the Anthropic-compatible `POST /v1/messages` endpoint, despite it being thoroughly documented in `server/specs/ANTHROPIC_COMPATIBILITY.md` and natively supported by Ollama 0.5.0+. Users setting up the server for Claude Code integration have no setup guide.
+- **Action**:
+  1. Add an "Anthropic API (Claude Code)" section to `server/SETUP.md` covering:
+     - Ollama version requirement (0.5.0+) for native Anthropic compatibility
+     - How to verify the endpoint works: `curl` example for `POST /v1/messages`
+     - Expected response format
+     - Link to `server/specs/ANTHROPIC_COMPATIBILITY.md` for full details
+  2. Add a note in the existing "Verify Installation" section that Anthropic API is also available
+- **Spec references**: `server/specs/ANTHROPIC_COMPATIBILITY.md` (entire file), `server/specs/INTERFACES.md` lines 30-50
+- **Dependencies**: None
+- **Effort**: Small (documentation text only)
+
+---
+
+### H3-5: Update client/SETUP.md to document v2+ features
+
+- **Priority**: H3 (documentation gap -- should be updated after v2+ features are implemented)
+- **What**: `client/SETUP.md` only covers Aider (v1) installation via `curl | bash`. There are no instructions for Claude Code setup, no mention of the `claude-ollama` alias, no analytics documentation, and no version management guidance. After v2+ features are implemented (H1-4, H2-1 through H2-3), the setup guide should be updated to cover the full feature set.
+- **Action**: After v2+ implementation is complete, update `client/SETUP.md` to add:
+  1. "Claude Code Integration (v2+)" section explaining the optional Ollama backend
+  2. How to opt into Claude Code during install (or re-run install to add it)
+  3. How to use the `claude-ollama` alias
+  4. Version management quick-start (check-compatibility, pin-versions, downgrade)
+  5. Analytics overview and link to `ANALYTICS_README.md`
+- **Spec references**: `client/specs/CLAUDE_CODE.md`, `client/specs/VERSION_MANAGEMENT.md`, `client/specs/ANALYTICS.md`
+- **Dependencies**: H1-4, H2-1, H2-2, H2-3 (features must exist before documenting them)
+- **Effort**: Small (documentation text only)
+
+---
+
+### H4-1: Fix IMPLEMENTATION_PLAN.md Priority 1 env.template example ✅ COMPLETE
+
+- **Priority**: H4 (internal documentation inconsistency -- no user impact)
+- **What**: The Priority 1 section of this file (line 543) still showed the old env.template content with the `/v1` suffix: `export OLLAMA_API_BASE=http://__HOSTNAME__:11434/v1`. The actual `client/config/env.template` file was already fixed to remove `/v1` (as part of the v0.0.4 critical bug fix). This was a stale example in the plan itself that could cause confusion during future audits.
+- **Action**: ✅ Updated the code block in Priority 1 to show the corrected URL: `export OLLAMA_API_BASE=http://__HOSTNAME__:11434`
+- **Spec references**: `client/specs/API_CONTRACT.md` (corrected OLLAMA_API_BASE)
+- **Dependencies**: None
+- **Effort**: Trivial (single line edit in this file)
+
+---
+
 ## Dependency Graph
 
 ```
-H1-1 (README fix)           ──── standalone, do first
-H1-2 (spec update)          ──── standalone
-H1-3 (server /v1/messages)  ──── depends on H1-2
-H1-4 (install.sh claude)    ──── standalone
-H1-5 (env.template)         ──── standalone, supports H1-4
+H1-1 (README fix)              ──── standalone, do first
+H1-2 (server spec update)      ──── standalone
+H1-3 (server /v1/messages)     ──── depends on H1-2
+H1-4 (install.sh claude)       ──── standalone
+H1-5 (env.template)            ──── standalone, supports H1-4
 
-H2-1 (check-compatibility)  ──── standalone
-H2-2 (pin-versions)         ──── standalone
-H2-3 (downgrade-claude)     ──── depends on H2-2
-H2-4 (uninstall v2+)        ──── depends on H1-4
-H2-5 (test.sh v2+)          ──── depends on H1-3, H1-4, H2-1, H2-2, H2-3
+H2-1 (check-compatibility)     ──── standalone
+H2-2 (pin-versions)            ──── standalone
+H2-3 (downgrade-claude)        ──── depends on H2-2
+H2-4 (uninstall v2+)           ──── depends on H1-4
+H2-5 (test.sh v2+)             ──── depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3
+H2-6 (client SCRIPTS.md spec)  ──── standalone
 
-H3-1 (analytics audit)      ──── standalone
-H3-2 (hardware testing)     ──── depends on ALL H1 + H2
-H3-3 (server README update) ──── depends on H1-3, H3-2
+H3-1 (analytics fix+audit)     ──── standalone
+H3-2 (hardware testing)        ──── depends on ALL H1 + H2
+H3-3 (server README update)    ──── depends on H1-3, H3-2
+H3-4 (server SETUP.md update)  ──── standalone
+H3-5 (client SETUP.md update)  ──── depends on H1-4, H2-1, H2-2, H2-3
+
+H4-1 (plan /v1 URL fix)        ──── standalone
 ```
 
 ## Recommended Execution Order
+
+**Phase 0: Trivial Fixes (immediate, parallelizable)** ✅ COMPLETE
+0a. ✅ H4-1 -- Fix stale /v1 URL in this plan file (trivial, internal consistency)
 
 **Phase 1: Foundations (parallelizable)**
 1. H1-1 -- Fix client README (trivial, immediate user-facing improvement)
 2. H1-2 -- Update server SCRIPTS.md spec (unblocks H1-3)
 3. H1-5 -- Add Anthropic vars to env.template (trivial, unblocks H1-4)
+4. H2-6 -- Update client SCRIPTS.md spec (unblocks H2-5)
+5. H3-4 -- Update server SETUP.md with Anthropic API docs (standalone)
 
 **Phase 2: Core Implementation (partially parallelizable)**
-4. H1-3 -- Server /v1/messages tests (depends on H1-2)
-5. H1-4 -- Client install.sh Claude Code integration (depends on H1-5)
-6. H2-1 -- check-compatibility.sh (independent)
-7. H2-2 -- pin-versions.sh (independent)
+6. H1-3 -- Server /v1/messages tests (depends on H1-2)
+7. H1-4 -- Client install.sh Claude Code integration (depends on H1-5)
+8. H2-1 -- check-compatibility.sh (independent)
+9. H2-2 -- pin-versions.sh (independent)
 
 **Phase 3: Dependent Implementation**
-8. H2-3 -- downgrade-claude.sh (depends on H2-2)
-9. H2-4 -- Uninstall v2+ cleanup (depends on H1-4)
-10. H2-5 -- Client test.sh v2+ tests (depends on H1-3, H1-4, H2-1, H2-2, H2-3)
+10. H2-3 -- downgrade-claude.sh (depends on H2-2)
+11. H2-4 -- Uninstall v2+ cleanup (depends on H1-4)
+12. H2-5 -- Client test.sh v2+ tests (depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3)
 
 **Phase 4: Validation and Polish**
-11. H3-1 -- Analytics infrastructure audit (independent)
-12. H3-2 -- Hardware testing (depends on all above)
-13. H3-3 -- Server README update (depends on H3-2)
+13. H3-1 -- Analytics bug fixes, decision matrix, and audit (independent)
+14. H3-2 -- Hardware testing (depends on all above)
+15. H3-3 -- Server README update (depends on H3-2)
+16. H3-5 -- Client SETUP.md update (depends on H1-4, H2-1, H2-2, H2-3)
 
 ## Effort Estimation Summary
 
 | Priority | Item | Effort | Files Modified/Created |
 |----------|------|--------|----------------------|
 | H1-1 | README fix | Trivial | `client/README.md` (modify) |
-| H1-2 | Spec update | Small | `server/specs/SCRIPTS.md` (modify) |
+| H1-2 | Server spec update | Small | `server/specs/SCRIPTS.md` (modify) |
 | H1-3 | Server /v1/messages tests | Medium | `server/scripts/test.sh` (modify) |
 | H1-4 | Install Claude Code | Medium | `client/scripts/install.sh` (modify) |
 | H1-5 | Env template Anthropic vars | Trivial | `client/config/env.template` (modify) |
@@ -1280,13 +1366,17 @@ H3-3 (server README update) ──── depends on H1-3, H3-2
 | H2-3 | downgrade-claude.sh | Small-medium | `client/scripts/downgrade-claude.sh` (create) |
 | H2-4 | Uninstall v2+ | Small | `client/scripts/uninstall.sh` (modify) |
 | H2-5 | Test v2+ | Medium | `client/scripts/test.sh` (modify) |
-| H3-1 | Analytics audit | Small-medium | `loop-with-analytics.sh`, `compare-analytics.sh` (audit/modify) |
+| H2-6 | Client SCRIPTS.md spec update | Small | `client/specs/SCRIPTS.md` (modify) |
+| H3-1 | Analytics fix + audit | Medium | `loop-with-analytics.sh`, `compare-analytics.sh` (modify) |
 | H3-2 | Hardware testing | Large | None (manual testing) |
 | H3-3 | Server README update | Trivial | `server/README.md` (modify) |
+| H3-4 | Server SETUP.md Anthropic docs | Small | `server/SETUP.md` (modify) |
+| H3-5 | Client SETUP.md v2+ docs | Small | `client/SETUP.md` (modify) |
+| H4-1 | Plan /v1 URL fix | Trivial | `IMPLEMENTATION_PLAN.md` (modify) |
 
 **Total new files**: 3 (`check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`)
-**Total modified files**: 7 (`client/README.md`, `server/specs/SCRIPTS.md`, `server/scripts/test.sh`, `client/scripts/install.sh`, `client/config/env.template`, `client/scripts/uninstall.sh`, `client/scripts/test.sh`)
-**Total estimated effort**: ~3-5 days of focused development + hardware testing
+**Total modified files**: 12 (`client/README.md`, `server/specs/SCRIPTS.md`, `server/scripts/test.sh`, `client/scripts/install.sh`, `client/config/env.template`, `client/scripts/uninstall.sh`, `client/scripts/test.sh`, `client/specs/SCRIPTS.md`, `loop-with-analytics.sh`, `compare-analytics.sh`, `server/SETUP.md`, `client/SETUP.md`, `IMPLEMENTATION_PLAN.md`)
+**Total estimated effort**: ~4-6 days of focused development + hardware testing
 
 ## Implementation Constraints (carried forward from v1)
 

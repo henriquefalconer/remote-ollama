@@ -11,6 +11,23 @@ The private-ai-server provides a secure, private LLM inference API that:
 - Uses Tailscale for secure remote access
 - Requires no third-party cloud dependencies
 
+## Quick Reference
+
+| Operation | Command | Description |
+|-----------|---------|-------------|
+| **Check status** | `launchctl list \| grep com.ollama` | Check if Ollama service is loaded |
+| | `curl -sf http://localhost:11434/v1/models` | Test API endpoint availability |
+| **Start service** | `launchctl kickstart gui/$(id -u)/com.ollama` | Start the service if stopped |
+| **Stop service** | `launchctl stop gui/$(id -u)/com.ollama` | Stop the service temporarily |
+| **Restart service** | `launchctl kickstart -k gui/$(id -u)/com.ollama` | Kill and restart the service immediately |
+| **View logs** | `tail -f /tmp/ollama.stdout.log` | Monitor standard output logs |
+| | `tail -f /tmp/ollama.stderr.log` | Monitor error logs |
+| **Check models** | `ollama list` | List all pulled models |
+| **Warm models** | `./scripts/warm-models.sh <model-name>` | Pre-load models into memory for faster response |
+| **Run tests** | `./scripts/test.sh` | Run comprehensive test suite |
+| | `./scripts/test.sh --skip-model-tests` | Run tests without model inference |
+| **Uninstall** | `./scripts/uninstall.sh` | Remove server configuration and service |
+
 ## Intended Deployment
 
 - **Hardware**: Apple Silicon Mac (M-series) with ≥96 GB unified memory recommended

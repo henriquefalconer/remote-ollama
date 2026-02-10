@@ -5,7 +5,7 @@
 
 ## Implementation Status (v0.0.1)
 
-Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completion of all priorities A-D: server uninstall.sh, macOS version check, server test.sh, and client test.sh. All 8 spec-required scripts now complete. Tag 0.0.1 created. Re-audited 2026-02-10: all 194 server spec requirements and all client spec requirements verified against implementation; 0 code gaps found; 1 documentation gap added (warm-models.sh missing from user-facing docs). Updated 2026-02-10: warm-models.sh documentation completed.
+Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completion of all priorities A-D: server uninstall.sh, macOS version check, server test.sh, and client test.sh. All 8 spec-required scripts now complete. Tag 0.0.1 created. Re-audited 2026-02-10: all 194 server spec requirements and all client spec requirements verified against implementation; 0 code gaps found; 1 documentation gap added (warm-models.sh missing from user-facing docs). Updated 2026-02-10: warm-models.sh documentation completed. Quick-reference card completed 2026-02-10.
 
 - ✅ 8 of 8 spec-required scripts implemented: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
@@ -16,7 +16,7 @@ Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completi
 - ✅ Tag 0.0.1 created marking completion of all 8 spec-required scripts
 - ✅ **All scripts implemented**: All 8 spec-required scripts complete
 - ✅ **0 spec compliance gaps** (macOS version check completed in server install.sh)
-- ⏳ **3 documentation polish tasks** blocked until hardware testing complete
+- ⏳ **2 documentation polish tasks** blocked until hardware testing complete
 
 # Implementation Plan
 
@@ -84,11 +84,11 @@ Items sorted by priority -- implement in this order to achieve full spec complia
   - ✅ Output: pass/fail per test, summary count, exit code 0/non-zero, `--verbose`/`-v`, colorized
   - ✅ Test modes: `--skip-server`, `--skip-aider`, `--quick`
 
-### Priority E: Documentation polish (3 remaining tasks)
+### Priority E: Documentation polish (2 remaining tasks)
 - **Blocked until**: Priorities C and D complete, plus hardware testing
 - [ ] Update `server/README.md` and `client/README.md` with actual tested commands and sample outputs
 - [ ] Expand troubleshooting sections in both SETUP.md files based on issues found during testing
-- [ ] Add quick-reference card for common operations (start/stop server, switch models, check status)
+- ✅ Add quick-reference card for common operations (start/stop server, switch models, check status)
 - ✅ Add `warm-models.sh` documentation to `server/README.md` and `server/SETUP.md` (script exists in `server/scripts/warm-models.sh` and is spec'd in `server/specs/SCRIPTS.md` lines 25-33 and `server/specs/FILES.md` line 16, but neither user-facing doc mentions it)
 
 ### Non-Critical Spec Observations (informational)

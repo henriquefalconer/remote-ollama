@@ -19,6 +19,25 @@ After installation:
 3. Installs Aider with automatic server connection
 4. Provides clean uninstallation
 
+## Quick Reference
+
+| Operation | Command | Description |
+|-----------|---------|-------------|
+| **Start Aider** | `aider` | Launch Aider in interactive mode |
+| | `aider --yes` | Launch Aider in YOLO mode (auto-accept changes) |
+| **Check config** | `echo $OPENAI_API_BASE` | Display configured API base URL |
+| | `echo $OPENAI_API_KEY` | Display configured API key |
+| | `cat ~/.private-ai-client/env` | View all environment variables |
+| **Test connectivity** | `curl $OPENAI_API_BASE/models` | Test connection to server |
+| | `tailscale status` | Check Tailscale connection status |
+| **Run tests** | `./scripts/test.sh` | Run comprehensive test suite |
+| | `./scripts/test.sh --skip-server` | Run tests without server connectivity checks |
+| | `./scripts/test.sh --quick` | Run quick tests (skip model inference) |
+| **Reload environment** | `source ~/.private-ai-client/env` | Reload environment variables in current shell |
+| | `exec $SHELL` | Restart shell to apply environment changes |
+| **Uninstall** | `./scripts/uninstall.sh` | Remove client configuration and Aider |
+| | `~/.private-ai-client/uninstall.sh` | Uninstall if installed via curl-pipe |
+
 ## Requirements
 
 - macOS 14 Sonoma or later

@@ -307,12 +307,15 @@ else
     fail "Security: Could not verify Ollama is not running as root"
 fi
 
-# Test 15: Log files exist
+# Test 15: Log files exist and are readable
 info "Checking log files..."
-if [[ -f /tmp/ollama.stdout.log ]] && [[ -f /tmp/ollama.stderr.log ]]; then
-    pass "Log files exist (/tmp/ollama.stdout.log, /tmp/ollama.stderr.log)"
-else
+if [[ -f /tmp/ollama.stdout.log ]] && [[ -r /tmp/ollama.stdout.log ]] && \
+   [[ -f /tmp/ollama.stderr.log ]] && [[ -r /tmp/ollama.stderr.log ]]; then
+    pass "Log files exist and are readable (/tmp/ollama.stdout.log, /tmp/ollama.stderr.log)"
+elif [[ ! -f /tmp/ollama.stdout.log ]] || [[ ! -f /tmp/ollama.stderr.log ]]; then
     fail "Log files missing"
+else
+    fail "Log files exist but are not readable"
 fi
 
 # Test 16: Plist file exists

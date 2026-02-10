@@ -141,15 +141,19 @@ else
 fi
 
 if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    pass "OPENAI_API_KEY is set: $OPENAI_API_KEY"
+    if [[ "$OPENAI_API_KEY" == "ollama" ]]; then
+        pass "OPENAI_API_KEY is set correctly: $OPENAI_API_KEY"
+    else
+        fail "OPENAI_API_KEY has wrong value" "ollama" "$OPENAI_API_KEY" "Edit ~/.private-ai-client/env to set OPENAI_API_KEY=ollama"
+    fi
 else
-    fail "OPENAI_API_KEY is not set"
+    fail "OPENAI_API_KEY is not set" "OPENAI_API_KEY=ollama" "Variable not set" "Run install.sh or source ~/.private-ai-client/env"
 fi
 
 if [[ -n "${AIDER_MODEL:-}" ]]; then
     pass "AIDER_MODEL is set (optional): $AIDER_MODEL"
 else
-    info "AIDER_MODEL is not set (optional, OK)"
+    skip "AIDER_MODEL is not set (optional)" "Uncomment and set AIDER_MODEL in ~/.private-ai-client/env"
 fi
 
 # Test 6: Shell profile sources env file
@@ -482,13 +486,17 @@ else
     fail "Uninstall script not found"
 fi
 
-# Test 27: Install script idempotency (check if markers exist)
+# Test 27: Install script idempotency (check if markers exist and are unique)
 if [[ -f "$SHELL_PROFILE" ]]; then
-    if grep -q ">>> private-ai-client >>>" "$SHELL_PROFILE" && \
-       grep -q "<<< private-ai-client <<<" "$SHELL_PROFILE"; then
-        pass "Install script marker comments found (idempotency support)"
+    START_COUNT=$(grep -c ">>> private-ai-client >>>" "$SHELL_PROFILE" 2>/dev/null || echo "0")
+    END_COUNT=$(grep -c "<<< private-ai-client <<<" "$SHELL_PROFILE" 2>/dev/null || echo "0")
+
+    if [[ "$START_COUNT" -eq 1 ]] && [[ "$END_COUNT" -eq 1 ]]; then
+        pass "Install script marker comments found exactly once (idempotency verified)"
+    elif [[ "$START_COUNT" -gt 1 ]] || [[ "$END_COUNT" -gt 1 ]]; then
+        fail "Marker comments appear multiple times (idempotency broken)" "1 occurrence of each marker" "Start: $START_COUNT, End: $END_COUNT" "Re-run install.sh to fix duplicate markers"
     else
-        fail "Install script marker comments not found in shell profile"
+        fail "Install script marker comments not found in shell profile" "Markers present" "Markers missing" "Run install.sh to add markers"
     fi
 fi
 

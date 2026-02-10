@@ -5,7 +5,7 @@
 
 ## Implementation Status (v0.0.3-dev)
 
-Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-implementation comparison using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed. **16 additional gaps** found across all scripts. Total: **51 spec compliance gaps**. **17 gaps fixed** as of 2026-02-10. Remaining: **34 spec compliance gaps**.
+Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-implementation comparison using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed. **16 additional gaps** found across all scripts. Total: **51 spec compliance gaps**. **21 gaps fixed** as of 2026-02-10. Remaining: **30 spec compliance gaps**.
 
 - ✅ 8 of 8 spec-required scripts exist: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
@@ -15,7 +15,7 @@ Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-impleme
 - ✅ `client/scripts/install.sh` — ALL 11 gaps fixed (F1.1-F1.11)
 - ✅ `client/scripts/test.sh` — 3 gaps fixed (F2.1-F2.3)
 - ✅ `server/scripts/test.sh` — 3 gaps fixed (F3.1-F3.3)
-- ⚠️ **34 spec compliance gaps remaining** (see Priority F below for full list)
+- ⚠️ **30 spec compliance gaps remaining** (see Priority F below for full list)
 - ⏳ **2 documentation polish tasks** blocked until hardware testing complete
 
 # Implementation Plan
@@ -33,7 +33,7 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 ## Remaining Work (Priority Order)
 
-Items sorted by priority -- implement in this order to achieve full spec compliance. Priorities A-D are COMPLETE. **Priority F (34 spec compliance gaps remaining, 17 fixed) is the current focus.**
+Items sorted by priority -- implement in this order to achieve full spec compliance. Priorities A-D are COMPLETE. **Priority F (30 spec compliance gaps remaining, 21 fixed) is the current focus.**
 
 ### Priority A: server/scripts/uninstall.sh -- ✅ COMPLETE
 - **File**: `server/scripts/uninstall.sh`
@@ -92,9 +92,9 @@ Items sorted by priority -- implement in this order to achieve full spec complia
 - ✅ Add quick-reference card for common operations (start/stop server, switch models, check status)
 - ✅ Add `warm-models.sh` documentation to `server/README.md` and `server/SETUP.md` (script exists in `server/scripts/warm-models.sh` and is spec'd in `server/specs/SCRIPTS.md` lines 25-33 and `server/specs/FILES.md` line 16, but neither user-facing doc mentions it)
 
-### Priority F: Spec Compliance Gaps (34 items remaining) -- UPDATED
+### Priority F: Spec Compliance Gaps (30 items remaining) -- UPDATED
 
-Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line against implementation using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed; **16 additional gaps** found across all scripts. **17 gaps fixed** as of 2026-02-10. Grouped by script, sorted by priority within each group. Spec line numbers reference the requirement; implementation line numbers reference the current code.
+Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line against implementation using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed; **16 additional gaps** found across all scripts. **21 gaps fixed** as of 2026-02-10. Grouped by script, sorted by priority within each group. Spec line numbers reference the requirement; implementation line numbers reference the current code.
 
 #### F1. client/scripts/install.sh -- ✅ ALL 11 gaps FIXED
 
@@ -142,7 +142,7 @@ Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line agains
   - Spec: `client/specs/API_CONTRACT.md` lines 39-43 — 4 env vars defined including optional `AIDER_MODEL`
   - Fix applied: Added note about uncommenting AIDER_MODEL in `~/.private-ai-client/env` for default model selection
 
-#### F2. client/scripts/test.sh -- 12 gaps remaining (3 gaps FIXED)
+#### F2. client/scripts/test.sh -- 10 gaps remaining (5 gaps FIXED)
 
 - ✅ **F2.1 — No test progress indication** (HIGH) — FIXED
   - Spec: `client/specs/SCRIPTS.md` line 118 — "Progress indication (test X/total)"
@@ -176,10 +176,9 @@ Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line agains
   - Implementation: Only checks `.choices[0].message.content`, not full schema fields (`id`, `object`, `created`, `model`, `usage`)
   - Fix: Validate all required OpenAI schema fields in responses
 
-- [ ] **F2.8 — OPENAI_API_KEY value not validated** (LOW)
+- ✅ **F2.8 — OPENAI_API_KEY value not validated** (LOW) — FIXED
   - Spec: `client/specs/SCRIPTS.md` line 70 — "OPENAI_API_KEY set with value 'ollama'"
-  - Implementation: `client/scripts/test.sh` lines 112-116 check if OPENAI_API_KEY is set but don't verify value equals "ollama"
-  - Fix: Add value check
+  - Fix applied: Added value check for "ollama"
 
 - [ ] **F2.9 — `--quick` mode scope too broad** (LOW)
   - Spec: `client/specs/SCRIPTS.md` line 138 — "Run only critical tests (env vars, dependencies, basic connectivity)"
@@ -206,17 +205,15 @@ Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line agains
   - Implementation: `client/scripts/test.sh` lines 441-452 check uninstall script availability but don't run it
   - Fix: Add a dry-run or clean-system execution test to verify uninstall.sh runs without error
 
-- [ ] **F2.14 — Idempotency test only checks marker presence, not uniqueness** (LOW)
+- ✅ **F2.14 — Idempotency test only checks marker presence, not uniqueness** (LOW) — FIXED
   - Spec: `client/specs/SCRIPTS.md` line 105 — "Verify install.sh idempotency (safe to re-run)"
-  - Implementation: `client/scripts/test.sh` lines 454-462 check marker comments exist but don't verify they appear exactly once
-  - Fix: Count marker occurrences; duplicated markers indicate broken idempotency
+  - Fix applied: Added marker occurrence counting to detect duplicates
 
-- [ ] **F2.15 — AIDER_MODEL check produces no visible output in non-verbose mode** (LOW)
+- ✅ **F2.15 — AIDER_MODEL check produces no visible output in non-verbose mode** (LOW) — FIXED
   - Spec: `client/specs/SCRIPTS.md` line 71 — "AIDER_MODEL (optional, check if set)"
-  - Implementation: `client/scripts/test.sh` lines 118-122 show AIDER_MODEL status only via `info()` (verbose-only); not counted in test totals
-  - Fix: Use `skip()` or `pass()` so the check appears in normal output and test counts
+  - Fix applied: Changed from `info()` to `skip()` so it appears in normal output
 
-#### F3. server/scripts/test.sh -- 6 gaps remaining (3 gaps FIXED)
+#### F3. server/scripts/test.sh -- 5 gaps remaining (4 gaps FIXED)
 
 - ✅ **F3.1 — No test progress indication** (HIGH) — FIXED
   - Spec: `server/specs/SCRIPTS.md` line 169 — "Progress indication: show test number / total"
@@ -240,10 +237,9 @@ Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line agains
   - Implementation: `server/scripts/test.sh` lines 187-198 check for `data:` chunks but don't verify `usage` field
   - Fix: Parse final SSE chunk and verify `usage` field presence
 
-- [ ] **F3.6 — Log file readability not checked** (LOW)
+- ✅ **F3.6 — Log file readability not checked** (LOW) — FIXED
   - Spec: `server/specs/SCRIPTS.md` line 150 — "Verify log files exist and are readable"
-  - Implementation: `server/scripts/test.sh` lines 279-285 check `-f` (existence) but not `-r` (readability)
-  - Fix: Add `-r` check alongside `-f`
+  - Fix applied: Added `-r` check alongside `-f` for both log files
 
 - [ ] **F3.7 — Skipped tests lack "how to enable" guidance** (MEDIUM)
   - Spec: `server/specs/SCRIPTS.md` line 180 — "Skip guidance - If tests are skipped, explain why and how to enable them"
@@ -863,16 +859,16 @@ A comprehensive audit of all 13 specification files was performed to validate in
 - **No TODO/FIXME markers**: All spec files and implementation scripts are complete for v1 scope with no placeholder sections
 
 ### Implementation-vs-spec audit (updated 2026-02-10, v4.1)
-Every implemented script was compared line-by-line against its spec requirements using parallel Opus/Sonnet subagents. Fourth audit pass; all 35 previously identified gaps re-confirmed, 16 additional gaps found across all scripts. Total: 51 gaps. **15 gaps fixed as of 2026-02-10. Remaining: 36 gaps.**
+Every implemented script was compared line-by-line against its spec requirements using parallel Opus/Sonnet subagents. Fourth audit pass; all 35 previously identified gaps re-confirmed, 16 additional gaps found across all scripts. Total: 51 gaps. **21 gaps fixed as of 2026-02-10. Remaining: 30 gaps.**
 
 - **client/config/env.template**: ✅ All 4 variables present and correct, `export` used, `AIDER_MODEL` commented out, `__HOSTNAME__` placeholder correct
 - **server/scripts/install.sh**: ✅ Near-fully compliant. 1 minor gap: no shell validation (F7.3). All core functionality and UX requirements met.
 - **server/scripts/uninstall.sh**: ⚠️ Core functionality complete. 3 gaps: no error/warning tracking in summary (F5.1), `set -euo pipefail` could conflict with graceful degradation (F5.2), banner lacks purpose (F5.3)
 - **server/scripts/warm-models.sh**: ⚠️ Core functionality complete. 3 gaps: `ollama pull` progress suppressed (F4.1), message format differs from spec (F4.2), no time estimates (F4.3)
-- **server/scripts/test.sh**: ⚠️ All 20 tests implemented. ✅ 3 gaps fixed (F3.1-F3.3). 6 gaps remaining: verbose mode incomplete (F3.4), include_usage test doesn't verify usage (F3.5), log readability not checked (F3.6), skipped tests lack enablement guidance (F3.7), summary not boxed (F3.8), no next-steps section (F3.9)
+- **server/scripts/test.sh**: ⚠️ All 20 tests implemented. ✅ 4 gaps fixed (F3.1-F3.3, F3.6). 5 gaps remaining: verbose mode incomplete (F3.4), include_usage test doesn't verify usage (F3.5), skipped tests lack enablement guidance (F3.7), summary not boxed (F3.8), no next-steps section (F3.9)
 - **client/scripts/install.sh**: ✅ FULLY COMPLIANT. All 11 gaps fixed (F1.1-F1.11) including all 3 HIGH priority gaps
 - **client/scripts/uninstall.sh**: ⚠️ Core functionality complete. 6 gaps: banner lacks purpose (F6.1), static summary always lists Aider (F6.2), static summary always lists shell mods (F6.3), static summary always lists config dir (F6.4), terminal reminder outside summary (F6.5), no failure state tracking (F6.6)
-- **client/scripts/test.sh**: ⚠️ All 27 tests implemented. ✅ 3 gaps fixed (F2.1-F2.3). 12 gaps remaining (F2.4-F2.15)
+- **client/scripts/test.sh**: ⚠️ All 27 tests implemented. ✅ 5 gaps fixed (F2.1-F2.3, F2.8, F2.14-F2.15). 10 gaps remaining (F2.4-F2.7, F2.9-F2.13)
 
 ---
 

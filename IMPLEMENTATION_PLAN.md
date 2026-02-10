@@ -993,7 +993,7 @@ Every implemented script was compared line-by-line against its spec requirements
 | Root-level analytics | PARTIALLY COMPLETE | Scripts exist but have divide-by-zero bugs; per-iteration cache hit rate uses wrong formula (H3-6, bundled with H3-1); missing spec-required decision matrix output |
 | Documentation | FOUNDATION COMPLETE | Client README.md corrected; server/client SETUP.md updated; SCRIPTS.md specs updated for v2+; ANALYTICS_README.md references non-existent script (H4-3, auto-resolved by H2-1) |
 | Curl-pipe install | GAP FOUND | Embedded env template in install.sh missing Anthropic variables (H1-6) |
-| Install defaults | GAP FOUND | Server hostname default `"remote-ollama"` vs spec `"ai-server"` (H4-2) |
+| Install defaults | ✅ FIXED | Server hostname default spec updated to `"remote-ollama"` (H4-2) |
 | Plan internal consistency | ✅ FIXED | Priority 1 env.template example corrected (removed stale `/v1` URL) |
 
 ### Three-Agent Audit Findings (2026-02-10)
@@ -1020,7 +1020,7 @@ Every implemented script was compared line-by-line against its spec requirements
 - Gaps 11-12 (MEDIUM): compare-analytics.sh missing decision matrix and mode detection -- H3-1
 - Gap 13 (MEDIUM): SETUP.md missing all v2+ documentation -- H3-5
 - Gaps 14-15 (MEDIUM): install.sh embedded template missing Anthropic variables -- **NEW, added as H1-6**
-- Gap 16 (LOW): install.sh hostname default "remote-ollama" vs spec "ai-server" -- **NEW, added as H4-2**
+- Gap 16 (LOW): install.sh hostname default "remote-ollama" vs spec "ai-server" -- ✅ RESOLVED (spec updated to match implementation)
 - Gap 17 (LOW): summary.md analysis text quality concern -- H3-1
 - Gap 18 (LOW): compare-analytics.sh does not parse mode from metadata -- H3-1
 - Gap 19 (LOW): ANALYTICS_README.md references non-existent check-compatibility.sh -- **NEW, added as H4-3**
@@ -1376,7 +1376,7 @@ Every implemented script was compared line-by-line against its spec requirements
 
 ---
 
-### H4-2: Fix install.sh server hostname default inconsistency with spec
+### H4-2: Fix install.sh server hostname default inconsistency with spec ✅ COMPLETE
 
 - **Priority**: H4 (low -- likely intentional for specific deployment, but does not match spec)
 - **What**: `client/scripts/install.sh` line 289 sets the default server hostname to `"remote-ollama"` when the user does not provide one. However, `client/specs/SCRIPTS.md` line 10 specifies that the default hostname should be `"ai-server"`. This may have been intentionally changed for a specific Tailscale deployment topology, but it creates a spec-vs-implementation mismatch that should be explicitly resolved.
@@ -1384,9 +1384,11 @@ Every implemented script was compared line-by-line against its spec requirements
   1. If `"remote-ollama"` is intentional: update `client/specs/SCRIPTS.md` to document `"remote-ollama"` as the default, with a note explaining the naming convention
   2. If `"ai-server"` is correct: update `client/scripts/install.sh` line 289 to use `"ai-server"` as the default
   3. Either way, ensure spec and implementation agree
+- **Resolution**: ✅ Spec updated to use `"remote-ollama"` as the default hostname (option 1 chosen). The `"remote-ollama"` naming convention is intentional and matches the actual Tailscale deployment topology.
 - **Spec references**: `client/specs/SCRIPTS.md` line 10 (default hostname spec)
 - **Dependencies**: None
 - **Effort**: Trivial (single string change in one file)
+- **Status**: ✅ COMPLETE
 
 ---
 

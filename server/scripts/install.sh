@@ -101,10 +101,27 @@ if [[ -z "$TAILSCALE_IP" ]]; then
         info "Opening Tailscale GUI..."
         open -a Tailscale 2>/dev/null && info "✓ Tailscale GUI opened" || warn "Failed to open GUI"
         echo ""
-        echo "Please complete these steps in the Tailscale GUI:"
-        echo "  1. Click 'Log in' or 'Sign up'"
-        echo "  2. Authenticate in your browser"
-        echo "  3. Approve the device in your Tailscale admin"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  First-time Tailscale Setup Instructions"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Complete these steps (first-time setup may take a few minutes):"
+        echo ""
+        echo "  1. macOS may prompt you to allow a System Extension"
+        echo "     → Click 'Allow' in the System Settings popup"
+        echo "     → Or go to: System Settings > Privacy & Security > Allow"
+        echo ""
+        echo "  2. You may need to activate the VPN configuration"
+        echo "     → If Tailscale doesn't connect automatically, open:"
+        echo "       System Settings > VPN > Tailscale"
+        echo "     → Toggle the switch to activate it"
+        echo ""
+        echo "  3. In the Tailscale app or browser window:"
+        echo "     → Click 'Log in' or 'Sign up' to create/access your account"
+        echo "     → Follow the browser authentication flow"
+        echo "     → Approve the device in your Tailscale admin (if prompted)"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
     elif command -v tailscale &> /dev/null; then
         # Fall back to CLI
@@ -119,17 +136,19 @@ if [[ -z "$TAILSCALE_IP" ]]; then
         fatal "Neither Tailscale GUI nor CLI is available. Installation may have failed."
     fi
 
-    # Wait with interactive prompt
+    # Wait with interactive prompt (no timeout)
     info "Waiting for Tailscale connection..."
-    echo "Checking status every 3 seconds (press Enter to check immediately, Ctrl+C to abort)"
+    echo "Press Enter after completing the steps above to check connection status"
     echo ""
 
     CONNECTED=false
-    CHECK_COUNT=0
-    MAX_CHECKS=100  # 5 minutes maximum (100 * 3 seconds)
 
-    while [[ "$CONNECTED" == "false" ]] && [[ $CHECK_COUNT -lt $MAX_CHECKS ]]; do
+    while [[ "$CONNECTED" == "false" ]]; do
+        # Wait for user to press Enter
+        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... "
+
         # Check status
+        echo "Checking Tailscale status..."
         if command -v tailscale &> /dev/null && tailscale status &> /dev/null 2>&1; then
             POTENTIAL_IP=$(tailscale ip -4 2>/dev/null | head -n1)
             if [[ -n "$POTENTIAL_IP" ]]; then
@@ -139,24 +158,24 @@ if [[ -z "$TAILSCALE_IP" ]]; then
                 info "✓ Tailscale connected! IP: $TAILSCALE_IP"
                 echo ""
                 break
+            else
+                warn "Tailscale is running but not yet connected"
+                echo "Tips:"
+                echo "  • Make sure you completed the authentication in your browser"
+                echo "  • Check if VPN is activated in System Settings > VPN"
+                echo "  • Try opening the Tailscale app to see its status"
+                echo ""
             fi
+        else
+            warn "Tailscale is not responding"
+            echo "Tips:"
+            echo "  • Make sure you allowed the System Extension"
+            echo "  • Check System Settings > Privacy & Security for pending permissions"
+            echo "  • Try opening the Tailscale app manually"
+            echo "  • You can also exit (Ctrl+C) and re-run this script after setup"
+            echo ""
         fi
-
-        # Wait with timeout or Enter
-        if read -t 3 -r 2>/dev/null; then
-            continue  # User pressed Enter, check immediately
-        fi
-        echo -n "."  # Show progress dot
-        CHECK_COUNT=$((CHECK_COUNT + 1))
     done
-
-    if [[ "$CONNECTED" == "false" ]]; then
-        echo ""
-        warn "Tailscale did not connect within the timeout period"
-        echo "Please ensure you complete the Tailscale login process and re-run this script"
-        echo "You can check status manually with: tailscale status"
-        echo ""
-    fi
 fi
 
 # Step 4: Check/install Ollama

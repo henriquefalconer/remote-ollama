@@ -1,4 +1,4 @@
-# private-ai-server – Setup Instructions
+# remote-ollama-server – Setup Instructions
 
 Target: Apple Silicon Mac (high memory recommended) running recent macOS
 
@@ -77,7 +77,7 @@ ollama pull <model-name>   # repeat for desired models
 
 In Tailscale admin console at tailscale.com:
 
-1. Assign a machine name e.g. "private-ai-server"
+1. Assign a machine name e.g. "remote-ollama-server"
 2. Create tags e.g. tag:ai-client
 3. Add ACL rule example:
 
@@ -87,7 +87,7 @@ In Tailscale admin console at tailscale.com:
     {
       "action": "accept",
       "src": ["tag:ai-client"],
-      "dst": ["tag:private-ai-server:11434"]
+      "dst": ["tag:remote-ollama-server:11434"]
     }
   ]
 }
@@ -98,7 +98,7 @@ In Tailscale admin console at tailscale.com:
 From an authorized client machine:
 
 ```bash
-curl http://private-ai-server:11434/v1/chat/completions \
+curl http://remote-ollama-server:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "any-available-model",
@@ -177,7 +177,7 @@ The `warm-models.sh` script eliminates cold-start latency by pre-loading models 
 
 ```bash
 # Navigate to server directory if not already there
-cd /path/to/private-ai-api/server
+cd /path/to/remote-ollama/server
 
 # Warm specific models
 ./scripts/warm-models.sh qwen2.5-coder:32b deepseek-r1:70b

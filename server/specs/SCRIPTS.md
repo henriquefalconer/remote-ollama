@@ -1,4 +1,4 @@
-# private-ai-server Scripts
+# remote-ollama-server Scripts
 
 ## scripts/install.sh
 
@@ -44,7 +44,7 @@
 - **Step 1: Machine Name**
   - Provides direct link to Tailscale machines page
   - Shows current Tailscale IP for easy identification
-  - Recommends machine name: `private-ai-server`
+  - Recommends machine name: `remote-ollama-server`
 - **Step 2: ACL Configuration**
   - Instructs user to click "JSON editor" button first (critical step)
   - Provides complete ACL JSON snippet with tags

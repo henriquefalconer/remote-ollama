@@ -1,17 +1,17 @@
-# private-ai-client Architecture
+# remote-ollama-client Architecture
 
-## Responsibilities of private-ai-client
+## Responsibilities of remote-ollama-client
 
 - Install and configure Tailscale membership
-- Create and source environment variables that exactly match the private-ai-server API contract (see API_CONTRACT.md)
+- Create and source environment variables that exactly match the remote-ollama-server API contract (see API_CONTRACT.md)
 - Install Aider (the only supported interface in v1) in a way that automatically reads the above variables
 - Provide clean uninstallation
 - Document the API contract so future interfaces can be added without changing the installer
 
-## Responsibilities of private-ai-server (from client perspective)
+## Responsibilities of remote-ollama-server (from client perspective)
 
 - Guarantee the exact HTTP contract in API_CONTRACT.md
-- Resolve the hostname `private-ai-server` via Tailscale
+- Resolve the hostname `remote-ollama-server` via Tailscale
 - Accept connections only from authorized Tailscale tags
 
 ## Client Runtime

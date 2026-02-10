@@ -1,10 +1,10 @@
-# private-ai-server API Contract (client view)
+# remote-ollama-server API Contract (client view)
 
-The private-ai-server exposes a strict subset of the OpenAI API at the following base URL:
+The remote-ollama-server exposes a strict subset of the OpenAI API at the following base URL:
 
 ## Base URL
 
-`http://private-ai-server:11434/v1`
+`http://remote-ollama-server:11434/v1`
 
 - Hostname is fixed; resolved via Tailscale
 - Port is always 11434
@@ -37,8 +37,8 @@ All others return 404.
 ## Environment Variables the client must set
 
 ```bash
-OLLAMA_API_BASE=http://private-ai-server:11434/v1
-OPENAI_API_BASE=http://private-ai-server:11434/v1     # for tools that read this
+OLLAMA_API_BASE=http://remote-ollama-server:11434/v1
+OPENAI_API_BASE=http://remote-ollama-server:11434/v1     # for tools that read this
 OPENAI_API_KEY=ollama                                 # ignored by server
 AIDER_MODEL=ollama/<model-name>                       # optional default
 ```

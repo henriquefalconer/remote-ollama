@@ -1,13 +1,13 @@
-# private-ai-server Architecture
+# remote-ollama-server Architecture
 
 ## Core Principles
 
-- Provide an OpenAI-compatible LLM inference API endpoint
-- Run exclusively on a dedicated, always-on machine (separate from clients)
+- Configure Ollama for secure remote access with its native OpenAI-compatible API
+- Run Ollama exclusively on a dedicated, always-on machine (separate from clients)
 - Zero public internet exposure
 - Zero third-party cloud dependencies
-- Minimal external dependencies (primarily Ollama + secure network overlay)
-- Native macOS service management via launchd
+- Minimal external dependencies (only Ollama + Tailscale for secure network overlay)
+- Native macOS service management via launchd (leveraging Ollama's service model)
 - Access restricted to explicitly authorized client devices only
 
 ## Intended Deployment Context
@@ -19,16 +19,17 @@
 
 ## Server Responsibilities
 
-- Expose `/v1` OpenAI-compatible API routes (chat/completions, etc.)
-- Bind the API listener to all network interfaces (including private overlay network)
-- Handle model loading, inference, and unloading automatically
-- Support streaming responses, JSON mode, tool calling (when model supports it)
+- Configure Ollama to expose `/v1` OpenAI-compatible API routes (chat/completions, etc.)
+- Bind Ollama's API listener to all network interfaces (including private overlay network)
+- Let Ollama handle model loading, inference, and unloading automatically
+- Leverage Ollama's native support for streaming responses, JSON mode, tool calling (when model supports it)
 
 ## Network & Access Model
 
-- Use Tailscale (or equivalent secure overlay VPN) for all remote access
+- Use Tailscale (or equivalent secure overlay VPN) for all remote access to Ollama
 - No port forwarding, no dynamic DNS, no public IP binding
 - Tailscale ACLs enforce per-device or per-tag authorization
+- Ollama's default port (11434) remains accessible only via Tailscale network
 
 ## Out of Scope for v1
 

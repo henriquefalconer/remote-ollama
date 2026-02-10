@@ -1,4 +1,4 @@
-# private-ai-server External Interfaces
+# remote-ollama-server External Interfaces
 
 ## Primary Interface
 

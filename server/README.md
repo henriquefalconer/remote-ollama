@@ -1,15 +1,15 @@
-# private-ai-server
+# remote-ollama-server
 
-OpenAI-compatible LLM inference server for Apple Silicon Macs with high unified memory.
+Ollama server configuration for secure remote access from Apple Silicon Macs with high unified memory.
 
 ## Overview
 
-The private-ai-server provides a secure, private LLM inference API that:
-- Exposes OpenAI-compatible `/v1` endpoints
+The remote-ollama-server configures Ollama to provide secure, remote LLM inference that:
+- Exposes Ollama's native OpenAI-compatible `/v1` endpoints
 - Runs exclusively on a dedicated, always-on Mac
 - Has zero public internet exposure
 - Uses Tailscale for secure remote access
-- Requires no third-party cloud dependencies
+- Requires no third-party cloud dependencies beyond Ollama and Tailscale
 
 ## Quick Reference
 
@@ -40,19 +40,20 @@ The private-ai-server provides a secure, private LLM inference API that:
 See [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md) for full architectural details.
 
 Key principles:
-- Minimal external dependencies (Ollama + Tailscale)
+- Built on Ollama's native capabilities
+- Minimal external dependencies (only Ollama + Tailscale)
 - Native macOS service management via launchd
 - Network-layer security only (no built-in auth)
 - Access restricted to authorized Tailscale devices
 
 ## API
 
-The server exposes OpenAI-compatible endpoints at:
+Ollama exposes OpenAI-compatible endpoints at:
 ```
 http://<tailscale-assigned-ip>:11434/v1
 ```
 
-Supported endpoints:
+Supported Ollama endpoints:
 - `/v1/chat/completions` (streaming, JSON mode, tool calling)
 - `/v1/models`
 - `/v1/responses`
@@ -65,9 +66,9 @@ See [SETUP.md](SETUP.md) for complete installation instructions.
 
 Quick summary:
 1. Install Tailscale and Ollama
-2. Configure Ollama to listen on all interfaces via launchd
+2. Configure Ollama to listen on all interfaces via launchd (enables remote access)
 3. Configure Tailscale ACLs for client access
-4. Pull desired models
+4. Pull desired models via Ollama CLI
 5. Verify connectivity from client
 
 ## Operations

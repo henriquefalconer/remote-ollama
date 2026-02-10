@@ -1,4 +1,4 @@
-# private-ai-server Security Model
+# remote-ollama-server Security Model
 
 ## Attack Surface Reduction
 

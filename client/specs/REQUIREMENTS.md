@@ -1,4 +1,4 @@
-# private-ai-client Requirements
+# remote-ollama-client Requirements
 
 ## macOS
 
@@ -17,7 +17,7 @@ Except for Homebrew/Tailscale installation if chosen by user.
 
 ## Shell Profile Modification
 
-The installer will modify your shell profile (`~/.zshrc` for zsh or `~/.bashrc` for bash) to automatically source the environment file (`~/.private-ai-client/env`). This modification:
+The installer will modify your shell profile (`~/.zshrc` for zsh or `~/.bashrc` for bash) to automatically source the environment file (`~/.remote-ollama-client/env`). This modification:
 - Requires explicit user consent during installation
 - Uses marker comments for clean removal by uninstaller
 - Ensures environment variables are available in all new shell sessions

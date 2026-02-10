@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# private-ai-server install script
+# remote-ollama-server install script
 # Automates the setup of Ollama + Tailscale for private LLM inference
 # Source: server/specs/* and server/SETUP.md
 
@@ -53,7 +53,7 @@ important_section() {
 
 # Banner
 echo "================================================"
-echo "  private-ai-server Installation Script"
+echo "  remote-ollama-server Installation Script"
 echo "================================================"
 echo ""
 
@@ -361,7 +361,7 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo -e "  Visit: ${BLUE}https://login.tailscale.com/admin/machines${NC}"
     echo -e "  Find this device: ${GREEN}$TAILSCALE_IP${NC}"
-    echo -e "  Set machine name to: ${GREEN}private-ai-server${NC}"
+    echo -e "  Set machine name to: ${GREEN}remote-ollama-server${NC}"
     echo ""
     section_break
     echo "┌─────────────────────────────────────────────────────────────┐"
@@ -376,14 +376,14 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     cat <<'ACL_EOF'
   {
     "tagOwners": {
-      "tag:private-ai-server": [],
+      "tag:remote-ollama-server": [],
       "tag:ai-client": []
     },
     "acls": [
       {
         "action": "accept",
         "src": ["tag:ai-client"],
-        "dst": ["tag:private-ai-server:11434"]
+        "dst": ["tag:remote-ollama-server:11434"]
       }
     ]
   }
@@ -395,7 +395,7 @@ ACL_EOF
     echo "       • Go back to: https://login.tailscale.com/admin/machines"
     echo -e "       • Find this machine (${GREEN}$TAILSCALE_IP${NC})"
     echo "       • Click three dots menu → 'Edit ACL tags...'"
-    echo -e "       • In the 'Tags' field, add: ${GREEN}tag:private-ai-server${NC}"
+    echo -e "       • In the 'Tags' field, add: ${GREEN}tag:remote-ollama-server${NC}"
     echo "       • Click 'Save'"
     echo ""
     echo -e "     ${BOLD}For client machines:${NC}"
@@ -447,11 +447,11 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo "  2. Install the client on your laptop/desktop:"
     echo ""
-    echo -e "     ${BLUE}curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/install.sh | bash${NC}"
+    echo -e "     ${BLUE}curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh | bash${NC}"
     echo ""
     echo "  3. Test the connection from your client:"
     echo ""
-    echo -e "     ${BLUE}curl http://private-ai-server:11434/v1/models${NC}"
+    echo -e "     ${BLUE}curl http://remote-ollama-server:11434/v1/models${NC}"
     echo ""
     section_break
     echo "Troubleshooting commands:"

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# private-ai-client test script
+# remote-ollama-client test script
 # Comprehensive validation of all client functionality
 # Source: client/specs/SCRIPTS.md lines 20-78
 
@@ -100,7 +100,7 @@ info() {
 
 # Banner
 echo "================================================"
-echo "  private-ai-client Test Suite"
+echo "  remote-ollama-client Test Suite"
 echo "  Running $TOTAL_TESTS tests"
 echo "================================================"
 echo ""
@@ -109,12 +109,12 @@ echo ""
 echo "=== Environment Configuration Tests ==="
 
 # Test 1: Env file exists
-ENV_FILE="$HOME/.private-ai-client/env"
+ENV_FILE="$HOME/.remote-ollama-client/env"
 info "Checking if env file exists at $ENV_FILE..."
 if [[ -f "$ENV_FILE" ]]; then
-    pass "Environment file exists (~/.private-ai-client/env)"
+    pass "Environment file exists (~/.remote-ollama-client/env)"
 else
-    fail "Environment file missing (~/.private-ai-client/env)"
+    fail "Environment file missing (~/.remote-ollama-client/env)"
 fi
 
 # Load environment if file exists
@@ -141,16 +141,16 @@ if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     if [[ "$OPENAI_API_KEY" == "ollama" ]]; then
         pass "OPENAI_API_KEY is set correctly: $OPENAI_API_KEY"
     else
-        fail "OPENAI_API_KEY has wrong value" "ollama" "$OPENAI_API_KEY" "Edit ~/.private-ai-client/env to set OPENAI_API_KEY=ollama"
+        fail "OPENAI_API_KEY has wrong value" "ollama" "$OPENAI_API_KEY" "Edit ~/.remote-ollama-client/env to set OPENAI_API_KEY=ollama"
     fi
 else
-    fail "OPENAI_API_KEY is not set" "OPENAI_API_KEY=ollama" "Variable not set" "Run install.sh or source ~/.private-ai-client/env"
+    fail "OPENAI_API_KEY is not set" "OPENAI_API_KEY=ollama" "Variable not set" "Run install.sh or source ~/.remote-ollama-client/env"
 fi
 
 if [[ -n "${AIDER_MODEL:-}" ]]; then
     pass "AIDER_MODEL is set (optional): $AIDER_MODEL"
 else
-    skip "AIDER_MODEL is not set (optional)" "Uncomment and set AIDER_MODEL in ~/.private-ai-client/env"
+    skip "AIDER_MODEL is not set (optional)" "Uncomment and set AIDER_MODEL in ~/.remote-ollama-client/env"
 fi
 
 # Test 6: Shell profile sources env file
@@ -165,7 +165,7 @@ else
 fi
 
 if [[ -f "$SHELL_PROFILE" ]]; then
-    if grep -q "private-ai-client" "$SHELL_PROFILE" && grep -q "source.*\.private-ai-client/env" "$SHELL_PROFILE"; then
+    if grep -q "remote-ollama-client" "$SHELL_PROFILE" && grep -q "source.*\.remote-ollama-client/env" "$SHELL_PROFILE"; then
         pass "Shell profile sources env file ($SHELL_PROFILE)"
     else
         fail "Shell profile does not source env file ($SHELL_PROFILE)"
@@ -750,9 +750,9 @@ echo "=== Script Behavior Tests ==="
 # Test 26: Uninstall script availability and clean-system test
 info "Checking uninstall script availability..."
 UNINSTALL_SCRIPT=""
-if [[ -f "$HOME/.private-ai-client/uninstall.sh" ]]; then
-    UNINSTALL_SCRIPT="$HOME/.private-ai-client/uninstall.sh"
-    pass "Uninstall script found at ~/.private-ai-client/uninstall.sh"
+if [[ -f "$HOME/.remote-ollama-client/uninstall.sh" ]]; then
+    UNINSTALL_SCRIPT="$HOME/.remote-ollama-client/uninstall.sh"
+    pass "Uninstall script found at ~/.remote-ollama-client/uninstall.sh"
 elif [[ -f "$(dirname "$0")/uninstall.sh" ]]; then
     UNINSTALL_SCRIPT="$(dirname "$0")/uninstall.sh"
     pass "Uninstall script found in local clone"
@@ -778,8 +778,8 @@ fi
 if [[ "$QUICK_MODE" == "true" ]]; then
     skip "Install script idempotency check - quick mode" "Remove --quick flag when running test.sh"
 elif [[ -f "$SHELL_PROFILE" ]]; then
-    START_COUNT=$(grep -c ">>> private-ai-client >>>" "$SHELL_PROFILE" 2>/dev/null || echo "0")
-    END_COUNT=$(grep -c "<<< private-ai-client <<<" "$SHELL_PROFILE" 2>/dev/null || echo "0")
+    START_COUNT=$(grep -c ">>> remote-ollama-client >>>" "$SHELL_PROFILE" 2>/dev/null || echo "0")
+    END_COUNT=$(grep -c "<<< remote-ollama-client <<<" "$SHELL_PROFILE" 2>/dev/null || echo "0")
 
     if [[ "$START_COUNT" -eq 1 ]] && [[ "$END_COUNT" -eq 1 ]]; then
         pass "Install script marker comments found exactly once (idempotency verified)"
@@ -830,7 +830,7 @@ else
         echo "  • Run install.sh to configure environment and install dependencies"
     fi
     echo "  • Check if server is running and accessible via Tailscale"
-    echo "  • Verify environment variables: source ~/.private-ai-client/env"
+    echo "  • Verify environment variables: source ~/.remote-ollama-client/env"
     echo "  • Open a new terminal to reload shell profile"
     echo ""
     exit 1

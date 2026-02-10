@@ -1,4 +1,4 @@
-# private-ai-client – Setup Instructions (macOS)
+# remote-ollama-client – Setup Instructions (macOS)
 
 ## Installation
 
@@ -9,7 +9,7 @@ Choose one of the following methods:
 Run the installer directly via curl:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh | bash
 ```
 
 ### Option 2: Clone and Install
@@ -17,8 +17,8 @@ curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/mas
 Clone the repository and run the installer locally:
 
 ```bash
-git clone https://github.com/henriquefalconer/private-ai-api.git
-cd private-ai-api/client
+git clone https://github.com/henriquefalconer/remote-ollama.git
+cd remote-ollama/client
 ./scripts/install.sh
 ```
 
@@ -27,8 +27,8 @@ cd private-ai-api/client
 The installer will:
 - Check/install Homebrew, Python, Tailscale
 - Open Tailscale for login and device approval
-- Prompt for server hostname (default: `private-ai-server`)
-- Create `~/.private-ai-client/env` with required environment variables
+- Prompt for server hostname (default: `remote-ollama-server`)
+- Create `~/.remote-ollama-client/env` with required environment variables
 - Update your shell profile (~/.zshrc) to source the environment
 - Install Aider via pipx
 - Run a connectivity test
@@ -47,8 +47,8 @@ Or simply open a new terminal window.
 
 ```bash
 # Check environment variables
-echo $OLLAMA_API_BASE          # http://private-ai-server:11434/v1
-echo $OPENAI_API_BASE          # http://private-ai-server:11434/v1
+echo $OLLAMA_API_BASE          # http://remote-ollama-server:11434/v1
+echo $OPENAI_API_BASE          # http://remote-ollama-server:11434/v1
 echo $OPENAI_API_KEY           # ollama
 
 # Check Aider
@@ -71,7 +71,7 @@ aider --yes               # YOLO mode
 ### Check Configuration
 ```bash
 # Verify environment variables are set
-echo $OPENAI_API_BASE    # Should show: http://private-ai-server:11434/v1
+echo $OPENAI_API_BASE    # Should show: http://remote-ollama-server:11434/v1
 echo $OPENAI_API_KEY     # Should show: ollama
 
 # Test connectivity (requires server access)
@@ -91,7 +91,7 @@ If you installed via local clone:
 
 If you installed via curl-pipe:
 ```bash
-~/.private-ai-client/uninstall.sh
+~/.remote-ollama-client/uninstall.sh
 ```
 
 ## Troubleshooting
@@ -106,8 +106,8 @@ If you installed via curl-pipe:
 ### Environment variables not set
 
 - Ensure you opened a new terminal after installation
-- Check that `~/.private-ai-client/env` exists
-- Verify `~/.zshrc` has the sourcing line: `source ~/.private-ai-client/env`
+- Check that `~/.remote-ollama-client/env` exists
+- Verify `~/.zshrc` has the sourcing line: `source ~/.remote-ollama-client/env`
 
 ### Aider not found
 

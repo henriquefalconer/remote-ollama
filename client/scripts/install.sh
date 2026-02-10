@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# private-ai-client install script
-# Configures environment to connect to private-ai-server via Tailscale
+# remote-ollama-client install script
+# Configures environment to connect to remote-ollama-server via Tailscale
 # Works both from local clone and via curl-pipe installation
 # Source: client/specs/* and client/SETUP.md
 
@@ -50,7 +50,7 @@ section_break() {
 
 # Banner
 echo "================================================"
-echo "  private-ai-client Installation Script"
+echo "  remote-ollama-client Installation Script"
 echo "================================================"
 echo ""
 
@@ -251,16 +251,16 @@ section_break "Environment Configuration"
 
 # Step 6: Prompt for server hostname
 echo ""
-prompt "Enter the server hostname (default: private-ai-server):"
+prompt "Enter the server hostname (default: remote-ollama-server):"
 read -r SERVER_HOSTNAME
 if [[ -z "$SERVER_HOSTNAME" ]]; then
-    SERVER_HOSTNAME="private-ai-server"
+    SERVER_HOSTNAME="remote-ollama-server"
 fi
 info "Using server hostname: $SERVER_HOSTNAME"
 
-# Step 7: Create ~/.private-ai-client directory
+# Step 7: Create ~/.remote-ollama-client directory
 info "Creating configuration directory..."
-CLIENT_DIR="$HOME/.private-ai-client"
+CLIENT_DIR="$HOME/.remote-ollama-client"
 mkdir -p "$CLIENT_DIR"
 info "✓ Created: $CLIENT_DIR"
 
@@ -277,7 +277,7 @@ if [[ "$0" == "bash" || "$0" == "/dev/stdin" || ! -f "$LOCAL_TEMPLATE" ]]; then
     # Curl-pipe mode: use embedded template
     info "Using embedded env.template (curl-pipe mode)"
     ENV_TEMPLATE_CONTENT=$(cat <<'TEMPLATE_EOF'
-# private-ai-client environment configuration
+# remote-ollama-client environment configuration
 # Source: client/specs/API_CONTRACT.md
 # Generated from env.template by install.sh -- do not edit manually
 export OLLAMA_API_BASE=http://__HOSTNAME__:11434/v1
@@ -306,8 +306,8 @@ if [[ "$CONSENT" =~ ^[Yy]$ ]]; then
     info "Updating shell profile..."
 
     # Marker pattern for idempotency and clean removal
-    MARKER_START="# >>> private-ai-client >>>"
-    MARKER_END="# <<< private-ai-client <<<"
+    MARKER_START="# >>> remote-ollama-client >>>"
+    MARKER_END="# <<< remote-ollama-client <<<"
 
     # Check if markers already exist
     if grep -q "$MARKER_START" "$SHELL_PROFILE" 2>/dev/null; then
@@ -320,7 +320,7 @@ if [[ "$CONSENT" =~ ^[Yy]$ ]]; then
         cat >> "$SHELL_PROFILE" <<PROFILE_EOF
 
 $MARKER_START
-# private-ai-client environment configuration
+# remote-ollama-client environment configuration
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
 fi
@@ -373,7 +373,7 @@ if [[ -f "$LOCAL_UNINSTALL" ]]; then
 else
     # Curl-pipe mode: download from GitHub
     info "Downloading uninstall.sh from GitHub..."
-    UNINSTALL_URL="https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/uninstall.sh"
+    UNINSTALL_URL="https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/uninstall.sh"
     if curl -fsSL "$UNINSTALL_URL" -o "$UNINSTALL_SCRIPT"; then
         chmod +x "$UNINSTALL_SCRIPT"
         info "✓ Downloaded uninstall.sh from GitHub"
@@ -396,7 +396,7 @@ else
     warn "Could not connect to server at $TEST_URL"
     echo ""
     echo "Possible reasons:"
-    echo "  1. Server is not running yet (install private-ai-server first)"
+    echo "  1. Server is not running yet (install remote-ollama-server first)"
     echo "  2. Tailscale ACLs not configured (check admin console)"
     echo "  3. This device not tagged with 'tag:ai-client'"
     echo "  4. Server hostname '$SERVER_HOSTNAME' is incorrect"

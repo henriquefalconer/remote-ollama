@@ -64,14 +64,25 @@ info "✓ Homebrew found: $(brew --version | head -n1)"
 # Step 3: Check/install Tailscale
 info "Checking for Tailscale..."
 
-# Try to install GUI app via cask if neither CLI nor GUI app exists
-if ! command -v tailscale &> /dev/null && ! [ -d "/Applications/Tailscale.app" ]; then
+# Check if GUI app exists
+if ! [ -d "/Applications/Tailscale.app" ]; then
+    echo ""
+    warn "Tailscale installation will request your password (sudo access required)"
+    echo "This is normal - Homebrew needs permission to install the system extension."
+    echo ""
     info "Installing Tailscale GUI via Homebrew..."
-    brew install --cask tailscale || fatal "Failed to install Tailscale"
+    brew install --cask tailscale || fatal "Failed to install Tailscale GUI"
     info "✓ Tailscale GUI installed"
-elif [ -d "/Applications/Tailscale.app" ]; then
+else
     info "✓ Tailscale GUI already installed"
-elif command -v tailscale &> /dev/null; then
+fi
+
+# Check if CLI tools are available
+if ! command -v tailscale &> /dev/null; then
+    info "Installing Tailscale CLI tools via Homebrew..."
+    brew install tailscale || fatal "Failed to install Tailscale CLI"
+    info "✓ Tailscale CLI installed"
+else
     info "✓ Tailscale CLI already installed"
 fi
 
@@ -107,9 +118,11 @@ if [[ -z "$TAILSCALE_IP" ]]; then
         echo ""
         echo "Complete these steps (first-time setup may take a few minutes):"
         echo ""
-        echo "  1. macOS may prompt you to allow a System Extension"
-        echo "     → Click 'Allow' in the System Settings popup"
-        echo "     → Or go to: System Settings > Privacy & Security > Allow"
+        echo "  1. macOS will prompt you for several permissions:"
+        echo "     → System Extension: Click 'Allow' (required for VPN)"
+        echo "     → Notifications: Click 'Allow' (recommended for connection status)"
+        echo "     → Start on log in: Click 'Yes, start on log in' (recommended)"
+        echo "       This ensures Tailscale reconnects automatically after reboot"
         echo ""
         echo "  2. You may need to activate the VPN configuration"
         echo "     → If Tailscale doesn't connect automatically, open:"
@@ -119,6 +132,10 @@ if [[ -z "$TAILSCALE_IP" ]]; then
         echo "  3. In the Tailscale app or browser window:"
         echo "     → Click 'Log in' or 'Sign up' to create/access your account"
         echo "     → Follow the browser authentication flow"
+        echo "     → If creating a new account, you'll see a survey form"
+        echo "       (Fill it out or skip - it's optional for getting started)"
+        echo "     → You may see an introduction/tutorial - you can skip it"
+        echo "       (Look for 'Skip this introduction' to speed up setup)"
         echo "     → Approve the device in your Tailscale admin (if prompted)"
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

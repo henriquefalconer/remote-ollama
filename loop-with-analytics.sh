@@ -264,8 +264,9 @@ analyze_iteration() {
     # Calculate cache efficiency
     local total_input=$((input_tokens + cache_creation + cache_read))
     local cache_hit_rate=0
-    if [ $total_input -gt 0 ]; then
-        cache_hit_rate=$((cache_read * 100 / total_input))
+    local cache_eligible=$((cache_creation + cache_read))
+    if [ $cache_eligible -gt 0 ]; then
+        cache_hit_rate=$((cache_read * 100 / cache_eligible))
     fi
 
     # Write detailed analysis

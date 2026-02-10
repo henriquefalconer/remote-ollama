@@ -84,11 +84,22 @@ STATS2=$(get_stats "$RUN2")
 IFS='|' read -r ITER1 SUB1 READ1 EDIT1 CACHE_CR1 CACHE_RD1 OUT1 <<< "$STATS1"
 IFS='|' read -r ITER2 SUB2 READ2 EDIT2 CACHE_CR2 CACHE_RD2 OUT2 <<< "$STATS2"
 
-# Calculate averages
-AVG_SUB1=$((SUB1 / ITER1))
-AVG_SUB2=$((SUB2 / ITER2))
-AVG_READ1=$((READ1 / ITER1))
-AVG_READ2=$((READ2 / ITER2))
+# Calculate averages (with zero checks to prevent divide-by-zero)
+if [ "$ITER1" -eq 0 ]; then
+    AVG_SUB1=0
+    AVG_READ1=0
+else
+    AVG_SUB1=$((SUB1 / ITER1))
+    AVG_READ1=$((READ1 / ITER1))
+fi
+
+if [ "$ITER2" -eq 0 ]; then
+    AVG_SUB2=0
+    AVG_READ2=0
+else
+    AVG_SUB2=$((SUB2 / ITER2))
+    AVG_READ2=$((READ2 / ITER2))
+fi
 
 # Calculate cache hit rates
 if [ $((CACHE_CR1 + CACHE_RD1)) -gt 0 ]; then
@@ -133,8 +144,8 @@ if [ $CACHE_RATE1 -gt 50 ]; then
     echo -e "    → Ollama (no caching) would be slower"
 fi
 
-# Workload comparison
-if [ $((READ1 / ITER1)) -gt $((EDIT1 / ITER1 * 3)) ]; then
+# Workload comparison (with zero check)
+if [ "$ITER1" -gt 0 ] && [ $((READ1 / ITER1)) -gt $((EDIT1 / ITER1 * 3)) ]; then
     echo -e "  ${GREEN_BOLD}✓${RESET} Workload is read-heavy (${AVG_READ1}:$((EDIT1/ITER1)) read:edit ratio)"
     echo -e "    → Local models suitable for majority of operations"
 fi

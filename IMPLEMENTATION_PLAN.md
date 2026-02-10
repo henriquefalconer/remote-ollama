@@ -8,7 +8,7 @@
 **Last Updated**: 2026-02-10
 **Current Version**: v0.0.4
 
-v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete. **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items)**.
+v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete; analytics bug fixes complete (H3-1). **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items). Phase 4: 1 done, 6 remaining**.
 
 ---
 
@@ -20,7 +20,7 @@ All 8 scripts delivered (server: 4, client: 3 + env.template). 48 tests passing 
 
 ### v2+ Implementation - IN PROGRESS
 
-Phase 1 (documentation foundations) complete: 7/22 items done. **Phase 2: COMPLETE (6/6 items done)** - H1-3, H1-4, H1-6, H2-1, H2-2, H4-4. Server Anthropic tests, client Claude Code installation, version compatibility checking, version pinning, and progress tracking all implemented. **Phase 3: COMPLETE (3/3 items done)** - H2-3, H2-4 complete. **7 items remain** across Phase 4 (validation and polish).
+Phase 1 (documentation foundations) complete: 7/22 items done. **Phase 2: COMPLETE (6/6 items done)** - H1-3, H1-4, H1-6, H2-1, H2-2, H4-4. Server Anthropic tests, client Claude Code installation, version compatibility checking, version pinning, and progress tracking all implemented. **Phase 3: COMPLETE (3/3 items done)** - H2-3, H2-4 complete. **Phase 4: 1 done, 6 remaining** - H3-1 complete (analytics bug fixes), 6 items remain (H2-5, H3-6, H3-2, H3-3, H3-5, H4-3).
 
 ---
 
@@ -34,19 +34,18 @@ All Phase 2 items completed: H1-3 (Anthropic tests), H1-4 (Claude Code install),
 
 All Phase 3 items completed: H2-3 (downgrade script), H2-4 (uninstall v2+ cleanup), and preparation work that unblocked H2-5. See "Completed This Session" section below for H2-4 details.
 
-### Phase 4: Validation and Polish (7 items)
+### Phase 4: Validation and Polish (6 items remaining)
 
 | ID | Task | Priority | Effort | Target Files | Dependencies |
 |----|------|----------|--------|-------------|-------------|
 | H2-5 | Add v2+ tests to client test.sh (8-10 tests: Claude Code binary, alias, `/v1/messages` connectivity, version scripts, `.version-lock` format). Add `--skip-claude`, `--v1-only`, `--v2-only` flags. | H2 | Medium | `client/scripts/test.sh` | H1-3, H1-4, H2-1, H2-2, H2-3, H2-4 (ALL DONE) |
-| H3-1 | Fix analytics bugs: (a) `compare-analytics.sh` lines 88-91 divide-by-zero -- no zero check on `ITER1`/`ITER2` before division; (b) `loop-with-analytics.sh` line 268 cache hit rate formula uses `total_input` denominator, spec requires `cache_creation + cache_read`. | H3 | Medium | `compare-analytics.sh`, `loop-with-analytics.sh` | None |
 | H3-6 | Implement decision matrix output per `client/specs/ANALYTICS.md` lines 474-485. Neither analytics script outputs this. | H3 | Medium | `loop-with-analytics.sh`, `compare-analytics.sh` | None |
 | H3-2 | Hardware testing: run all tests with `--verbose` on Apple Silicon server, manual Claude Code + Ollama validation, version management script testing. | H3 | Large | Manual | All H1 + H2 items |
 | H3-3 | Update `server/README.md`: new test count, Anthropic test sample output, `--skip-anthropic-tests` flag docs. | H3 | Trivial | `server/README.md` | H1-3, H3-2 |
 | H3-5 | Update `client/SETUP.md`: Claude Code integration section, version management quick-start, analytics overview. | H3 | Small | `client/SETUP.md` | H1-4, H2-1, H2-2, H2-3, H2-4 (ALL DONE) |
 | H4-3 | Auto-resolved when H2-1 is created (stale reference in `ANALYTICS_README.md`). | H4 | None | N/A | H2-1 |
 
-**Bundling**: H3-1 + H3-6 (same files, related analytics work).
+**Bundling**: H3-1 (COMPLETE) + H3-6 (PENDING) were bundled together as related analytics work.
 
 ---
 
@@ -63,7 +62,8 @@ Phase 3: COMPLETE (all 3 items done)
 
 Phase 4 (validation and polish):
   H2-5 ─────────── UNBLOCKED (all dependencies complete)
-  H3-1 + H3-6 ─── no blockers (can start anytime)
+  ✓ H3-1 ───────── DONE (analytics bug fixes)
+  H3-6 ─────────── no blockers (can start anytime)
   H3-2 ─────────── depends on H2-5 completion
   H3-3 ─────────── needs H3-2
   H3-5 ─────────── UNBLOCKED (all dependencies complete)
@@ -74,7 +74,7 @@ Phase 4 (validation and polish):
 
 **Batch 1** (parallel, all unblocked):
 1. H2-5 -- Client v2+ tests
-2. H3-1 + H3-6 -- Analytics bug fixes + decision matrix
+2. H3-6 -- Analytics decision matrix (H3-1 complete)
 3. H3-5 -- Client SETUP update
 
 **Batch 2** (after H2-5):
@@ -93,8 +93,9 @@ Phase 4 (validation and polish):
 | ~~Client install.sh (Claude Code + template sync)~~ | ~~H1-4, H1-6~~ | ~~DONE~~ |
 | ~~Version management (all scripts)~~ | ~~H2-1, H2-2, H2-3~~ | ~~DONE~~ |
 | ~~Client uninstall.sh (v2+ cleanup)~~ | ~~H2-4~~ | ~~DONE~~ |
+| ~~Analytics bug fixes~~ | ~~H3-1~~ | ~~DONE~~ |
 | Client test.sh (v2+ tests) | H2-5 | Medium |
-| Analytics fixes + decision matrix | H3-1, H3-6 | Medium |
+| Analytics decision matrix | H3-6 | Medium |
 | Hardware testing | H3-2 | Large |
 | Documentation updates | H3-3, H3-5 | Small |
 
@@ -211,7 +212,22 @@ Phase 4 (validation and polish):
 - Idempotent: safe to re-run without side effects
 - Compliant with marker conventions established in H1-4
 
-**Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles.
+### H3-1: Analytics Bug Fixes
+**Files**: `client/scripts/compare-analytics.sh`, `client/scripts/loop-with-analytics.sh`
+- Fixed divide-by-zero error in `compare-analytics.sh` lines 88-91:
+  - Added zero checks on `ITER1` and `ITER2` before computing deltas
+  - Now displays "N/A" when divisor is zero instead of crashing
+- Fixed divide-by-zero error in `compare-analytics.sh` line 137:
+  - Added zero check on `ITER1` before computing throughput delta percentage
+  - Prevents arithmetic errors in percentage calculation
+- Fixed cache hit rate formula in `loop-with-analytics.sh` line 268:
+  - Changed denominator from `total_input` to `cache_creation + cache_read`
+  - Now correctly implements formula per `client/specs/ANALYTICS.md` line 321
+  - Formula: `cache_hit_rate = (cache_read / (cache_creation + cache_read)) * 100`
+- All fixes comply with analytics specification requirements
+- Scripts now handle edge cases (zero iterations, zero tokens) gracefully
+
+**Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles. Analytics scripts are now robust against divide-by-zero errors and correctly calculate cache hit rates per specification.
 
 ---
 

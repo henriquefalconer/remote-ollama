@@ -1,4 +1,4 @@
-# remote-ollama ai-server Functionalities
+# remote-ollama-proxy ai-server Functionalities
 
 ## Core Functionality
 

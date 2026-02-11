@@ -1,4 +1,4 @@
-# remote-ollama ai-server External Interfaces
+# remote-ollama-proxy ai-server External Interfaces
 
 ## Architecture Overview
 
@@ -8,7 +8,7 @@ The server exposes APIs through a **three-layer architecture**:
 Client → Tailscale → HAProxy (100.x.x.x:11434) → Ollama (127.0.0.1:11434)
 ```
 
-- **Clients** connect to `remote-ollama:11434` (Tailscale DNS resolution)
+- **Clients** connect to `remote-ollama-proxy:11434` (Tailscale DNS resolution)
 - **HAProxy** listens on Tailscale interface, forwards allowlisted endpoints only
 - **Ollama** bound to loopback only, unreachable from network
 
@@ -31,7 +31,7 @@ Both served by the same Ollama process with no additional Ollama configuration r
 
 ### Client Perspective
 
-- HTTP API at `http://remote-ollama:11434/v1`
+- HTTP API at `http://remote-ollama-proxy:11434/v1`
 - Fully OpenAI-compatible schema (chat completions endpoint)
 - No custom routes or extensions in v1
 
@@ -65,7 +65,7 @@ The guaranteed contract for clients is the forwarded endpoints only (see `../cli
 
 ### Client Perspective
 
-- HTTP API at `http://remote-ollama:11434/v1/messages`
+- HTTP API at `http://remote-ollama-proxy:11434/v1/messages`
 - Anthropic Messages API compatibility layer
 - Experimental feature (Ollama 0.5.0+)
 
@@ -178,7 +178,7 @@ HAProxy runs as a user-level LaunchAgent:
 
 1. Device must be connected to Tailscale tailnet
 2. Device must be authorized via ACLs for port 11434
-3. Connect to `remote-ollama:11434` (Tailscale DNS handles resolution)
+3. Connect to `remote-ollama-proxy:11434` (Tailscale DNS handles resolution)
 
 ---
 
@@ -219,7 +219,7 @@ If previously deployed without proxy layer:
 
 ### For Clients
 
-**No changes required** - hostname and port remain the same (`remote-ollama:11434`).
+**No changes required** - hostname and port remain the same (`remote-ollama-proxy:11434`).
 
 HAProxy transparently replaces direct Ollama access at the same network endpoint.
 
@@ -271,7 +271,7 @@ This interface design provides:
 
 > **Secure, transparent access through intentional exposure**
 
-- Clients connect to same hostname and port (`remote-ollama:11434`)
+- Clients connect to same hostname and port (`remote-ollama-proxy:11434`)
 - HAProxy ensures only allowlisted endpoints are reachable
 - Ollama stays isolated on loopback (kernel-enforced)
 - Future hardening can be added without client changes

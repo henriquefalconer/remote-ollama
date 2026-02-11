@@ -1,4 +1,4 @@
-# remote-ollama ai-server Security Model
+# remote-ollama-proxy ai-server Security Model
 
 ## Security Philosophy
 
@@ -321,7 +321,7 @@ If Ollama was previously bound to `0.0.0.0` or Tailscale interface:
 4. Verify loopback binding: `lsof -i :11434` (should show `127.0.0.1` only)
 5. Test client connectivity through proxy
 
-**No client changes required** - hostname and port remain the same (`remote-ollama:11434`).
+**No client changes required** - hostname and port remain the same (`remote-ollama-proxy:11434`).
 
 ---
 

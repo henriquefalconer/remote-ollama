@@ -1,6 +1,6 @@
-# remote-ollama ai-server API Contract (client view)
+# remote-ollama-proxy ai-server API Contract (client view)
 
-The remote-ollama ai-server exposes two API surfaces for different client tools:
+The remote-ollama-proxy ai-server exposes two API surfaces for different client tools:
 
 1. **OpenAI-compatible API** - For Aider and OpenAI-compatible tools
 2. **Anthropic-compatible API** - For Claude Code and Anthropic-compatible tools
@@ -11,11 +11,11 @@ Both APIs are served by the same Ollama server on port 11434.
 
 ## OpenAI-Compatible API (v1)
 
-The remote-ollama ai-server exposes a strict subset of the OpenAI API at the following base URL:
+The remote-ollama-proxy ai-server exposes a strict subset of the OpenAI API at the following base URL:
 
 ## Base URL
 
-`http://remote-ollama:11434/v1`
+`http://remote-ollama-proxy:11434/v1`
 
 - Hostname is fixed; resolved via Tailscale
 - Port is always 11434
@@ -48,8 +48,8 @@ All others return 404.
 ## Environment Variables the client must set
 
 ```bash
-OLLAMA_API_BASE=http://remote-ollama:11434
-OPENAI_API_BASE=http://remote-ollama:11434/v1
+OLLAMA_API_BASE=http://remote-ollama-proxy:11434
+OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1
 OPENAI_API_KEY=ollama
 AIDER_MODEL=ollama/<model-name>                       # optional
 ```
@@ -74,11 +74,11 @@ Do not make assumptions about server internals, model availability, or features 
 
 ## Anthropic-Compatible API (v2+)
 
-The remote-ollama ai-server also exposes Anthropic Messages API compatibility at:
+The remote-ollama-proxy ai-server also exposes Anthropic Messages API compatibility at:
 
 ### Base URL
 
-`http://remote-ollama:11434/v1/messages`
+`http://remote-ollama-proxy:11434/v1/messages`
 
 - Same hostname and port as OpenAI API
 - Different endpoint path (`/v1/messages` vs `/v1/chat/completions`)
@@ -150,13 +150,13 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
-export ANTHROPIC_BASE_URL=http://remote-ollama:11434
+export ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434
 ```
 
 **Shell alias for easy switching:**
 ```bash
 # Recommended: alias for local backend
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://remote-ollama:11434 claude --dangerously-skip-permissions'
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434 claude --dangerously-skip-permissions'
 
 # Usage:
 claude --model opus-4-6        # Uses Anthropic cloud

@@ -1,4 +1,4 @@
-# remote-ollama ai-server – Setup Instructions
+# remote-ollama-proxy ai-server – Setup Instructions
 
 Target: Apple Silicon Mac (high memory recommended) running recent macOS
 
@@ -203,7 +203,7 @@ ollama pull <model-name>   # repeat for desired models
 
 In Tailscale admin console at tailscale.com:
 
-1. Assign a machine name e.g. "remote-ollama"
+1. Assign a machine name e.g. "remote-ollama-proxy"
 2. Create tags e.g. tag:ai-client
 3. Add ACL rule example:
 
@@ -242,7 +242,7 @@ lsof -i :11434 | grep LISTEN
 From an authorized client machine:
 
 ```bash
-curl http://remote-ollama:11434/v1/chat/completions \
+curl http://remote-ollama-proxy:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "any-available-model",
@@ -255,7 +255,7 @@ curl http://remote-ollama:11434/v1/chat/completions \
 From an authorized client machine:
 
 ```bash
-curl http://remote-ollama:11434/v1/messages \
+curl http://remote-ollama-proxy:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: ollama" \
   -H "anthropic-version: 2023-06-01" \
@@ -289,7 +289,7 @@ curl http://remote-ollama:11434/v1/messages \
 **Test streaming (optional):**
 
 ```bash
-curl http://remote-ollama:11434/v1/messages \
+curl http://remote-ollama-proxy:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: ollama" \
   -H "anthropic-version: 2023-06-01" \
@@ -406,7 +406,7 @@ The `warm-models.sh` script eliminates cold-start latency by pre-loading models 
 
 ```bash
 # Navigate to server directory if not already there
-cd /path/to/remote-ollama/server
+cd /path/to/remote-ollama-proxy/server
 
 # Warm specific models
 ./scripts/warm-models.sh qwen2.5-coder:32b deepseek-r1:70b

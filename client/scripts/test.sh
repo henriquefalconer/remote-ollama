@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# remote-ollama ai-client test script
+# remote-ollama-proxy ai-client test script
 # Comprehensive validation of all client functionality
 # Source: client/specs/SCRIPTS.md lines 20-78
 
@@ -158,7 +158,7 @@ info() {
 
 # Banner
 echo "================================================"
-echo "  remote-ollama ai-client Test Suite"
+echo "  remote-ollama-proxy ai-client Test Suite"
 echo "  Running $TOTAL_TESTS tests"
 echo "================================================"
 echo ""

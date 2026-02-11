@@ -1,10 +1,10 @@
-# remote-ollama ai-server
+# remote-ollama-proxy ai-server
 
 Ollama server configuration for secure remote access from Apple Silicon Macs with high unified memory.
 
 ## Overview
 
-The remote-ollama ai-server configures Ollama to provide secure, remote LLM inference with:
+The remote-ollama-proxy ai-server configures Ollama to provide secure, remote LLM inference with:
 - **Three-layer security**: Tailscale → HAProxy → Ollama (loopback-bound)
 - **Dual API support**: OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages` endpoints
 - Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
@@ -259,7 +259,7 @@ The test suite validates:
 ### Sample Output
 
 ```
-remote-ollama ai-server Test Suite
+remote-ollama-proxy ai-server Test Suite
 Running 26 tests
 
 === Service Status Tests ===
@@ -302,7 +302,7 @@ Total:   26
 ✓ All tests passed!
 ```
 
-All 26 tests passed on hardware testing (2026-02-10 on vm@remote-ollama with qwen2.5-coder:7b).
+All 26 tests passed on hardware testing (2026-02-10 on vm@remote-ollama-proxy with qwen2.5-coder:7b).
 
 ## Security
 

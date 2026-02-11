@@ -1,9 +1,9 @@
-# remote-ollama ai-client Architecture
+# remote-ollama-proxy ai-client Architecture
 
-## Responsibilities of remote-ollama ai-client
+## Responsibilities of remote-ollama-proxy ai-client
 
 - Install and configure Tailscale membership
-- Create and source environment variables that exactly match the remote-ollama ai-server API contract (see API_CONTRACT.md)
+- Create and source environment variables that exactly match the remote-ollama-proxy ai-server API contract (see API_CONTRACT.md)
 - Install and configure AI coding tools (Aider, optionally Claude Code)
 - Provide optional Ollama backend integration (alternative to Anthropic cloud API for Claude Code)
 - Provide analytics infrastructure for measuring tool performance
@@ -11,11 +11,11 @@
 - Provide clean uninstallation
 - Document the API contract so future interfaces can be added without changing the installer
 
-## Responsibilities of remote-ollama ai-server (from client perspective)
+## Responsibilities of remote-ollama-proxy ai-server (from client perspective)
 
 - Guarantee the exact HTTP contract in API_CONTRACT.md
 - Support both OpenAI-compatible API (for Aider) and Anthropic-compatible API (for Claude Code)
-- Resolve the hostname `remote-ollama` via Tailscale
+- Resolve the hostname `remote-ollama-proxy` via Tailscale
 - Accept connections only from authorized Tailscale tags
 
 ## Client Runtime

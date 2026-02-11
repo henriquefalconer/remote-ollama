@@ -1,4 +1,4 @@
-# remote-ollama ai-client Functionalities
+# remote-ollama-proxy ai-client Functionalities
 
 ## Core Functionality (v1 - Aider)
 

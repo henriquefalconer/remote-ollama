@@ -1,4 +1,4 @@
-# remote-ollama ai-client
+# remote-ollama-proxy ai-client
 
 macOS client setup for connecting to remote Ollama, supporting Aider (v1) and Claude Code (v2+ - planned).
 
@@ -11,7 +11,7 @@ This README documents both current (v1) and planned (v2+) features. Features mar
 
 ## Overview
 
-The remote-ollama ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI-compatible APIs.
+The remote-ollama-proxy ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI-compatible APIs.
 
 **Currently available (v1)**:
 - **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically
@@ -125,7 +125,7 @@ The following features are documented in the specifications but not yet implemen
 - Homebrew
 - Python 3.10+
 - Tailscale account
-- Access to a remote-ollama ai-server (must be invited to the same Tailscale network)
+- Access to a remote-ollama-proxy ai-server (must be invited to the same Tailscale network)
 
 ## Installation
 
@@ -206,13 +206,13 @@ The test suite validates:
 ### Sample Output
 
 ```
-remote-ollama ai-client Test Suite
+remote-ollama-proxy ai-client Test Suite
 Running 28 tests
 
 === Environment Configuration Tests ===
 ✓ PASS Environment file exists (~/.ai-client/env)
-✓ PASS OLLAMA_API_BASE is set: http://remote-ollama:11434
-✓ PASS OPENAI_API_BASE is set: http://remote-ollama:11434/v1
+✓ PASS OLLAMA_API_BASE is set: http://remote-ollama-proxy:11434
+✓ PASS OPENAI_API_BASE is set: http://remote-ollama-proxy:11434/v1
 ✓ PASS OPENAI_API_KEY is set correctly: ollama
 • SKIP AIDER_MODEL is not set (optional)
 ✓ PASS Shell profile sources env file (/Users/vm/.zshrc)
@@ -227,7 +227,7 @@ Running 28 tests
 ✓ PASS Aider is installed: aider 0.86.1
 
 === Connectivity Tests ===
-✓ PASS Server is reachable (remote-ollama)
+✓ PASS Server is reachable (remote-ollama-proxy)
 ✓ PASS GET /v1/models returns valid JSON (1 models)
 
 ...

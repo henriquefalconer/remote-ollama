@@ -3,7 +3,7 @@
  SPDX-License-Identifier: Proprietary
 -->
 
-# remote-ollama
+# remote-ollama-proxy
 
 A monorepo containing both server and client components for secure remote access to self-hosted Ollama.
 
@@ -16,7 +16,7 @@ This monorepo contains two main components:
 
 ## Overview
 
-The remote-ollama project provides a complete solution for running Ollama on your own hardware with secure remote access via Tailscale, zero public internet exposure, and zero third-party cloud dependencies.
+The remote-ollama-proxy project provides a complete solution for running Ollama on your own hardware with secure remote access via Tailscale, zero public internet exposure, and zero third-party cloud dependencies.
 
 ### Server (ai-server)
 - Runs Ollama on a dedicated Apple Silicon Mac with high unified memory

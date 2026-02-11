@@ -1,4 +1,4 @@
-# remote-ollama ai-server Architecture
+# remote-ollama-proxy ai-server Architecture
 
 ## Core Principles
 
@@ -187,7 +187,7 @@ tail -f /tmp/haproxy.log
 - All remote access goes through Tailscale overlay network
 - No port forwarding, no dynamic DNS, no public IP binding
 - ACLs enforce per-device or per-tag authorization for port 11434
-- Clients connect to `remote-ollama:11434` (resolved via Tailscale DNS)
+- Clients connect to `remote-ollama-proxy:11434` (resolved via Tailscale DNS)
 
 ### HAProxy Configuration
 
@@ -309,7 +309,7 @@ If previously deployed with direct Ollama exposure:
 4. Verify isolation: `lsof -i :11434` (should show loopback only)
 5. Test client connectivity
 
-**No client changes required** - hostname stays `remote-ollama:11434`.
+**No client changes required** - hostname stays `remote-ollama-proxy:11434`.
 
 ---
 
@@ -382,7 +382,7 @@ curl http://127.0.0.1:9090/stats  # If stats socket enabled
 
 **End-to-end health (from client):**
 ```bash
-curl http://remote-ollama:11434/v1/models
+curl http://remote-ollama-proxy:11434/v1/models
 ```
 
 ### Log Locations

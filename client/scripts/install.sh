@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# remote-ollama ai-client install script
-# Configures environment to connect to remote-ollama ai-serverale
+# remote-ollama-proxy ai-client install script
+# Configures environment to connect to remote-ollama-proxy ai-serverale
 # Works both from local clone and via curl-pipe installation
 # Source: client/specs/* and client/SETUP.md
 
@@ -50,7 +50,7 @@ section_break() {
 
 # Banner
 echo "================================================"
-echo "  remote-ollama ai-client Installation"
+echo "  remote-ollama-proxy ai-client Installation"
 echo "================================================"
 echo ""
 
@@ -283,10 +283,10 @@ section_break "Environment Configuration"
 
 # Step 6: Prompt for server hostname
 echo ""
-prompt "Enter the server hostname (default: remote-ollama):"
+prompt "Enter the server hostname (default: remote-ollama-proxy):"
 read -r SERVER_HOSTNAME < /dev/tty
 if [[ -z "$SERVER_HOSTNAME" ]]; then
-    SERVER_HOSTNAME="remote-ollama"
+    SERVER_HOSTNAME="remote-ollama-proxy"
 fi
 info "Using server hostname: $SERVER_HOSTNAME"
 
@@ -309,7 +309,7 @@ if [[ "$0" == "bash" || "$0" == "/dev/stdin" || ! -f "$LOCAL_TEMPLATE" ]]; then
     # Curl-pipe mode: use embedded template
     info "Using embedded env.template (curl-pipe mode)"
     ENV_TEMPLATE_CONTENT=$(cat <<'TEMPLATE_EOF'
-# remote-ollama ai-client environment configuration
+# remote-ollama-proxy ai-client environment configuration
 # Source: client/specs/API_CONTRACT.md
 # Generated from env.template by install.sh -- do not edit manually
 export OLLAMA_API_BASE=http://__HOSTNAME__:11434
@@ -357,7 +357,7 @@ if [[ "$CONSENT" =~ ^[Yy]$ ]]; then
         cat >> "$SHELL_PROFILE" <<PROFILE_EOF
 
 $MARKER_START
-# remote-ollama ai-client environment configuration
+# remote-ollama-proxy ai-client environment configuration
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
 fi
@@ -537,7 +537,7 @@ if [[ -f "$LOCAL_UNINSTALL" ]]; then
     chmod +x "$UNINSTALL_SCRIPT"
 else
     # Curl-pipe mode: download from GitHub
-    UNINSTALL_URL="https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/uninstall.sh"
+    UNINSTALL_URL="https://raw.githubusercontent.com/henriquefalconer/remote-ollama-proxy/master/client/scripts/uninstall.sh"
     if curl -fsSL "$UNINSTALL_URL" -o "$UNINSTALL_SCRIPT" 2>/dev/null; then
         chmod +x "$UNINSTALL_SCRIPT"
     else

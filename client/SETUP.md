@@ -1,4 +1,4 @@
-# remote-ollama ai-client – Setup Instructions (macOS)
+# remote-ollama-proxy ai-client – Setup Instructions (macOS)
 
 ## Installation
 
@@ -9,7 +9,7 @@ Choose one of the following methods:
 Run the installer directly via curl:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama-proxy/master/client/scripts/install.sh)
 ```
 
 ### Option 2: Clone and Install
@@ -17,8 +17,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-olla
 Clone the repository and run the installer locally:
 
 ```bash
-git clone https://github.com/henriquefalconer/remote-ollama.git
-cd remote-ollama/client
+git clone https://github.com/henriquefalconer/remote-ollama-proxy.git
+cd remote-ollama-proxy/client
 ./scripts/install.sh
 ```
 
@@ -437,7 +437,7 @@ If you installed via curl-pipe:
 
 ### Critical v0.0.3 Bug: Aider fails with 404 errors
 
-**Symptom**: If you installed v0.0.3 and Aider fails with 404 errors like `http://remote-ollama:11434/v1/api/show not found`.
+**Symptom**: If you installed v0.0.3 and Aider fails with 404 errors like `http://remote-ollama-proxy:11434/v1/api/show not found`.
 
 **Root Cause**: The v0.0.3 `env.template` incorrectly set `OLLAMA_API_BASE` with a `/v1` suffix. This causes Aider/LiteLLM to construct invalid URLs.
 
@@ -450,9 +450,9 @@ If you installed via curl-pipe:
 # Option 2: Manual fix - edit ~/.ai-client/env
 nano ~/.ai-client/env
 # Change this line:
-#   export OLLAMA_API_BASE=http://remote-ollama:11434/v1
+#   export OLLAMA_API_BASE=http://remote-ollama-proxy:11434/v1
 # To this (remove /v1):
-#   export OLLAMA_API_BASE=http://remote-ollama:11434
+#   export OLLAMA_API_BASE=http://remote-ollama-proxy:11434
 
 # Then reload your environment:
 exec $SHELL
@@ -460,8 +460,8 @@ exec $SHELL
 
 **Verification**: Check that your environment variables are correct:
 ```bash
-echo $OLLAMA_API_BASE   # Should be http://remote-ollama:11434 (NO /v1)
-echo $OPENAI_API_BASE   # Should be http://remote-ollama:11434/v1 (WITH /v1)
+echo $OLLAMA_API_BASE   # Should be http://remote-ollama-proxy:11434 (NO /v1)
+echo $OPENAI_API_BASE   # Should be http://remote-ollama-proxy:11434/v1 (WITH /v1)
 ```
 
 ### "Connection refused" when testing connectivity
@@ -470,7 +470,7 @@ echo $OPENAI_API_BASE   # Should be http://remote-ollama:11434/v1 (WITH /v1)
 
 **Solutions**:
 - Verify Tailscale is connected: `tailscale status` (should show "Connected")
-- Check you can resolve server hostname: `ping remote-ollama` (or your custom hostname)
+- Check you can resolve server hostname: `ping remote-ollama-proxy` (or your custom hostname)
 - Verify you're on the same Tailscale network as the server
 - Check Tailscale ACLs: you must have the appropriate tag or device access granted by the admin
 - Test if server is responding: ask server admin to verify `./scripts/test.sh` passes

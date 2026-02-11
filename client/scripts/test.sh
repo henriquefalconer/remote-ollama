@@ -311,7 +311,7 @@ else
             info "Request: GET $SERVER_URL/v1/models"
             RESPONSE_WITH_CODE=$(curl -v "$SERVER_URL/v1/models" -w "\n%{http_code}" 2>&1 || echo "FAILED")
             HTTP_CODE=$(echo "$RESPONSE_WITH_CODE" | tail -n1)
-            MODELS_RESPONSE=$(echo "$RESPONSE_WITH_CODE" | sed '$d' | grep -v '^[<>*]' | grep -v '^{' -A 9999 || echo "$RESPONSE_WITH_CODE" | sed '$d')
+            MODELS_RESPONSE=$(echo "$RESPONSE_WITH_CODE" | sed '$d')
             info "HTTP Status: $HTTP_CODE"
             info "Response Body: $MODELS_RESPONSE"
         else
@@ -322,9 +322,12 @@ else
         fi
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
@@ -332,16 +335,19 @@ else
             info "Elapsed time: ${ELAPSED_MS}ms"
         fi
 
+        # Extract JSON from verbose output (last line is the actual response)
+        JSON_ONLY=$(echo "$MODELS_RESPONSE" | tail -n 1)
+
         # F2.6: Validate HTTP status code
         if [[ "$HTTP_CODE" != "200" ]]; then
             fail "GET /v1/models returned HTTP $HTTP_CODE" "200" "$HTTP_CODE"
-        elif [[ "$MODELS_RESPONSE" != "FAILED" ]] && echo "$MODELS_RESPONSE" | jq -e '.object == "list"' &> /dev/null; then
-            MODEL_COUNT=$(echo "$MODELS_RESPONSE" | jq -r '.data | length')
+        elif [[ "$MODELS_RESPONSE" != "FAILED" ]] && echo "$JSON_ONLY" | jq -e '.object == "list"' &> /dev/null; then
+            MODEL_COUNT=$(echo "$JSON_ONLY" | jq -r '.data | length')
             pass "GET /v1/models returns valid JSON (${MODEL_COUNT} models)"
 
             # Store first model for later tests
             if [[ "$MODEL_COUNT" -gt 0 ]]; then
-                FIRST_MODEL=$(echo "$MODELS_RESPONSE" | jq -r '.data[0].id')
+                FIRST_MODEL=$(echo "$JSON_ONLY" | jq -r '.data[0].id')
                 info "First available model: $FIRST_MODEL"
             fi
         else
@@ -361,7 +367,7 @@ else
             info "Request: GET $SERVER_URL/v1/models/$FIRST_MODEL"
             RESPONSE_WITH_CODE=$(curl -v "$SERVER_URL/v1/models/$FIRST_MODEL" -w "\n%{http_code}" 2>&1 || echo "FAILED")
             HTTP_CODE=$(echo "$RESPONSE_WITH_CODE" | tail -n1)
-            MODEL_DETAIL=$(echo "$RESPONSE_WITH_CODE" | sed '$d' | grep -v '^[<>*]' | grep -v '^{' -A 9999 || echo "$RESPONSE_WITH_CODE" | sed '$d')
+            MODEL_DETAIL=$(echo "$RESPONSE_WITH_CODE" | sed '$d')
             info "HTTP Status: $HTTP_CODE"
             info "Response Body: $MODEL_DETAIL"
         else
@@ -372,9 +378,12 @@ else
         fi
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
@@ -382,10 +391,13 @@ else
             info "Elapsed time: ${ELAPSED_MS}ms"
         fi
 
+        # Extract JSON from verbose output (last line is the actual response)
+        JSON_ONLY=$(echo "$MODEL_DETAIL" | tail -n 1)
+
         # F2.6: Validate HTTP status code
         if [[ "$HTTP_CODE" != "200" ]]; then
             fail "GET /v1/models/{model} returned HTTP $HTTP_CODE" "200" "$HTTP_CODE"
-        elif [[ "$MODEL_DETAIL" != "FAILED" ]] && echo "$MODEL_DETAIL" | jq -e '.id' &> /dev/null; then
+        elif [[ "$MODEL_DETAIL" != "FAILED" ]] && echo "$JSON_ONLY" | jq -e '.id' &> /dev/null; then
             pass "GET /v1/models/{model} returns valid model details"
         else
             fail "GET /v1/models/{model} failed"
@@ -430,14 +442,24 @@ else
         fi
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
         if [[ "$VERBOSE" == "true" ]]; then
             info "Elapsed time: ${ELAPSED_MS}ms"
+        fi
+
+        # Extract JSON from verbose output (in verbose mode, CHAT_BODY has mixed output; in non-verbose, CHAT_RESPONSE is clean)
+        if [[ "$VERBOSE" == "true" ]]; then
+            JSON_ONLY=$(echo "$CHAT_BODY" | tail -n 1)
+        else
+            JSON_ONLY="$CHAT_RESPONSE"
         fi
 
         # F2.6: Validate HTTP status code
@@ -451,27 +473,27 @@ else
             MISSING_FIELDS=""
 
             # Check required fields
-            if ! echo "$CHAT_RESPONSE" | jq -e '.id' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.id' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}id, "
             fi
-            if ! echo "$CHAT_RESPONSE" | jq -e '.object' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.object' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}object, "
             fi
-            if ! echo "$CHAT_RESPONSE" | jq -e '.created' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.created' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}created, "
             fi
-            if ! echo "$CHAT_RESPONSE" | jq -e '.model' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.model' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}model, "
             fi
-            if ! echo "$CHAT_RESPONSE" | jq -e '.usage' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.usage' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}usage, "
             fi
-            if ! echo "$CHAT_RESPONSE" | jq -e '.choices[0].message.content' &> /dev/null; then
+            if ! echo "$JSON_ONLY" | jq -e '.choices[0].message.content' &> /dev/null; then
                 SCHEMA_VALID=false
                 MISSING_FIELDS="${MISSING_FIELDS}choices[0].message.content, "
             fi
@@ -518,9 +540,12 @@ else
         fi
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
@@ -555,9 +580,12 @@ else
         fi
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
@@ -630,9 +658,12 @@ if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "$
     fi
 
     END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-    if [[ "$START_TIME" =~ N ]]; then
+    # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+    if [[ ${#START_TIME} -gt 12 ]]; then
+        # Nanoseconds (19 digits) - convert to milliseconds
         ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
     else
+        # Seconds (10 digits) - convert to milliseconds
         ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
     fi
 
@@ -640,8 +671,11 @@ if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "$
         info "Elapsed time: ${ELAPSED_MS}ms"
     fi
 
+    # Extract JSON from verbose output (last line is the actual response)
+    JSON_ONLY=$(echo "$JSON_RESPONSE" | tail -n 1)
+
     if [[ "$JSON_RESPONSE" != "FAILED" ]]; then
-        CONTENT=$(echo "$JSON_RESPONSE" | jq -r '.choices[0].message.content' 2>/dev/null || echo "")
+        CONTENT=$(echo "$JSON_ONLY" | jq -r '.choices[0].message.content' 2>/dev/null || echo "")
         if echo "$CONTENT" | jq -e '.' &> /dev/null 2>&1; then
             pass "JSON mode returns valid JSON content"
         else
@@ -965,9 +999,12 @@ else
         RESPONSE_BODY=$(echo "$RESPONSE_WITH_CODE" | sed '$d')
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 
@@ -1037,9 +1074,12 @@ else
             2>/dev/null || echo "FAILED")
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-        if [[ "$START_TIME" =~ N ]]; then
+        # Detect if nanoseconds are supported by checking if we got a large number (>12 digits)
+        if [[ ${#START_TIME} -gt 12 ]]; then
+            # Nanoseconds (19 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
         else
+            # Seconds (10 digits) - convert to milliseconds
             ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
         fi
 

@@ -8,7 +8,7 @@
 **Last Updated**: 2026-02-11
 **Current Version**: v0.0.18
 
-v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: client install script bug fixed (undefined success function); server test script bugs fixed (timing calculation + Anthropic endpoint detection) based on hardware test results; server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete; analytics bug fixes complete (H3-1); client v2+ tests added (H2-5); analytics decision matrix implemented (H3-6); client SETUP.md updated with v2+ documentation (H3-5); server README.md updated with v2+ test documentation (H3-3); H4-3 verified auto-resolved. **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items). Phase 4: 8 done, 1 remaining (H3-2 hardware testing re-run)**.
+v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: client test script bugs fixed (timing + JSON parsing); client install script bug fixed (undefined success function); server test script bugs fixed (timing calculation + Anthropic endpoint detection) based on hardware test results; server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete; analytics bug fixes complete (H3-1); client v2+ tests added (H2-5); analytics decision matrix implemented (H3-6); client SETUP.md updated with v2+ documentation (H3-5); server README.md updated with v2+ test documentation (H3-3); H4-3 verified auto-resolved. **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items). Phase 4: 9 done, 1 remaining (H3-2 hardware testing re-run)**.
 
 ---
 
@@ -51,6 +51,7 @@ All Phase 3 items completed: H2-3 (downgrade script), H2-4 (uninstall v2+ cleanu
 - ✓ H4-3 - Auto-resolved (verified: check-compatibility.sh exists, ANALYTICS_README.md reference is correct)
 - ✓ H3-2a - Server test script bug fixes discovered from hardware testing (timing calculation + Anthropic endpoint detection)
 - ✓ H3-2b - Client install script bug fix (undefined success function)
+- ✓ H3-2c - Client test script bug fixes (timing calculation + JSON parsing, same bugs as server)
 
 ---
 
@@ -468,6 +469,46 @@ Phase 4 (validation and polish):
   ```
 - **Testing**: Bash syntax validation passed
 - **Result**: Script now completes successfully for all installation paths
+
+### H3-2c: Client Test Script Bug Fixes
+**Date**: 2026-02-11
+**File**: `client/scripts/test.sh`
+**Trigger**: Hardware test results revealed false failure and absurd timing values
+
+**Same bugs as server test script (H3-2a)**, applied to client tests:
+
+#### Bug 1: Timing Calculation Error
+- **Problem**: Test 15 showed elapsed time of 46,220,000 seconds (535 days)
+- **Root cause**: Identical to server bug - nanosecond detection checked for "N" in string instead of timestamp length
+- **Fix**: Check `${#START_TIME} -gt 12` to detect nanoseconds (19 digits) vs seconds (10 digits)
+- **Impact**: 9 timing calculation fixes across all timed tests
+
+#### Bug 2: JSON Parsing Error (Verbose Mode)
+- **Problem**: Test 15 failed despite HTTP 200 and valid JSON response
+- **Root cause**: Verbose mode (`curl -v ... 2>&1`) mixed debug output with JSON, breaking `jq` parsing
+- **Complex filtering logic** in original code was unreliable:
+  ```bash
+  # OLD (BROKEN):
+  MODELS_RESPONSE=$(... | grep -v '^[<>*]' | grep -v '^{' -A 9999 || ...)
+  ```
+- **Fix**: Simplified to extract last line (the JSON response):
+  ```bash
+  # NEW (FIXED):
+  JSON_ONLY=$(echo "$RESPONSE" | tail -n 1)
+  ```
+- **Impact**: 5 JSON extraction fixes (Tests 15, 16, 17, 21, and verbose mode parsing)
+
+#### Hardware Test Results Analysis
+- **Before fix**: 30 passed, 1 failed, 11 skipped
+  - Test 15 (GET /v1/models): FAIL (timing + JSON parsing bugs)
+  - Other skips: Legitimate (no models, quick mode, etc.)
+- **After fix (expected)**: 31 passed, 0 failed, 11 skipped
+  - Test 15: Now PASS with correct timing (~50ms) and successful JSON parsing
+
+#### Files Modified
+- Total: 14 bug fixes
+  - 9 timing calculation fixes
+  - 5 JSON extraction fixes
 
 **Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles. Analytics scripts are now robust against divide-by-zero errors and correctly calculate cache hit rates per specification. Client test suite validates all v2+ functionality with 12 new tests and flexible filtering flags. Analytics decision matrix provides actionable guidance on operation balance with shallow:deep ratio tracking. Client SETUP.md now comprehensively documents the complete v2+ user experience including installation, usage, version management, analytics workflow, and troubleshooting. Server README.md now accurately reflects v2+ test suite with 26 tests and Anthropic API coverage documentation. All test and analytics scripts now correctly handle grep -c edge cases without arithmetic syntax errors.
 

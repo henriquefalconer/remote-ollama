@@ -11,7 +11,7 @@ A monorepo containing both server and client components for secure remote access
 
 This monorepo contains two main components:
 
-- **server/** – Ollama server configuration that exposes OpenAI-compatible API endpoints
+- **server/** – Ollama server configuration with HAProxy security layer
 - **client/** – Client-side setup and configuration for connecting to remote Ollama
 
 ## Overview
@@ -20,6 +20,8 @@ The remote-ollama project provides a complete solution for running Ollama on you
 
 ### Server (ai-server)
 - Runs Ollama on a dedicated Apple Silicon Mac with high unified memory
+- **Three-layer security**: Tailscale → HAProxy → Ollama (loopback-bound)
+- HAProxy provides endpoint allowlisting and kernel-enforced isolation
 - Exposes dual API: OpenAI-compatible `/v1` and Anthropic-compatible `/v1/messages` endpoints
 - Accessible only via secure overlay network (Tailscale)
 - 24/7 operation for on-demand inference
@@ -55,7 +57,19 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ## Network Architecture
 
+```
+Client → Tailscale → HAProxy (allowlist) → Ollama (loopback-bound)
+```
+
+**Three-layer security:**
+1. **Tailscale** (Network Layer) - Controls WHO can reach the server
+2. **HAProxy** (Application Layer) - Controls WHAT they can access
+3. **Loopback Binding** (OS Kernel) - Prevents accidental exposure
+
+**Properties:**
 - **No public internet exposure** – All access via Tailscale private network
+- **Intentional exposure** – Only allowlisted endpoints are reachable
+- **Kernel-enforced isolation** – Ollama unreachable from network
 - **Device-level authorization** – Tailscale ACLs control access
 - **Dual API support** – OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages`
 - Works with any tool supporting custom OpenAI or Anthropic base URLs
@@ -83,8 +97,8 @@ See [client/README.md](client/README.md) for client installation and usage.
 - [client/SETUP.md](client/SETUP.md) – Client installation instructions
 
 ### Specifications
+- **Server specs**: `server/specs/` – Server architecture, dual API support, Anthropic compatibility, **security model**, hardening options
 - **Client specs**: `client/specs/` – Client architecture, API contract, Claude Code integration, analytics, version management
-- **Server specs**: `server/specs/` – Server architecture, dual API support, Anthropic compatibility
 
 ### Project Management
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) – Implementation status and roadmap
@@ -113,10 +127,31 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ## Security Model
 
-- Network-layer isolation via Tailscale
-- No built-in authentication (relies on network security)
-- No ports exposed to public internet
-- Tag-based access control
+### Three-Layer Defense in Depth
+
+**Layer 1: Tailscale (Network Isolation)**
+- WireGuard tunnel encryption
+- Device authorization via ACLs
+- Zero trust network model
+
+**Layer 2: HAProxy (Application Proxy)**
+- Endpoint allowlisting (only specific paths forwarded)
+- Single inspectable boundary for all access
+- Future expansion point (auth, rate limits, logging)
+
+**Layer 3: Loopback Binding (OS-Enforced Isolation)**
+- Ollama bound to `127.0.0.1` only
+- Kernel-enforced isolation (unreachable from network)
+- Prevents accidental exposure of other services
+
+### Security Properties
+
+✅ **Intentional exposure** - Only explicitly-forwarded endpoints reachable
+✅ **Kernel-enforced isolation** - Ollama cannot receive network packets
+✅ **Prevents reachability creep** - New features not auto-exposed
+✅ **Defense in depth** - Each layer independently secure
+
+See `server/specs/SECURITY.md` for complete security model documentation.
 
 ## License
 

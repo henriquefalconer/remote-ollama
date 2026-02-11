@@ -12,6 +12,47 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Cross-platform timeout function
+# Works on Linux (timeout), macOS with coreutils (gtimeout), or pure bash
+run_with_timeout() {
+    local timeout_duration=$1
+    shift
+
+    # Try native timeout command (Linux)
+    if command -v timeout &> /dev/null; then
+        timeout "$timeout_duration" "$@"
+        return $?
+    fi
+
+    # Try gtimeout (macOS with coreutils installed)
+    if command -v gtimeout &> /dev/null; then
+        gtimeout "$timeout_duration" "$@"
+        return $?
+    fi
+
+    # Fall back to bash-native implementation (works everywhere)
+    # Run command in background, kill if timeout exceeded
+    "$@" &
+    local cmd_pid=$!
+
+    # Wait for command with timeout
+    local count=0
+    while kill -0 $cmd_pid 2>/dev/null; do
+        if [ $count -ge $timeout_duration ]; then
+            kill -TERM $cmd_pid 2>/dev/null
+            sleep 1
+            kill -KILL $cmd_pid 2>/dev/null
+            return 124  # Standard timeout exit code
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    # Command completed before timeout
+    wait $cmd_pid
+    return $?
+}
+
 # Test counters
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -812,7 +853,7 @@ else
 
         # Run Aider non-interactively with a simple prompt
         # This will fail if OLLAMA_API_BASE has /v1 suffix (constructs invalid URL)
-        if timeout 30 bash -c 'echo "Say ok" | aider --yes --message "respond with just the word ok" --model ollama/qwen2.5:0.5b test.txt' &> /tmp/aider_test_output.log 2>&1; then
+        if run_with_timeout 30 bash -c 'echo "Say ok" | aider --yes --message "respond with just the word ok" --model ollama/qwen2.5:0.5b test.txt' &> /tmp/aider_test_output.log 2>&1; then
             pass "End-to-end Aider test succeeded (model metadata fetched correctly)"
         else
             # Check if it's a 404 error (the critical bug we're testing for)

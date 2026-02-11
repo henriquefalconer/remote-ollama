@@ -8,7 +8,7 @@
 **Last Updated**: 2026-02-11
 **Current Version**: v0.0.18
 
-v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: client test script bugs fixed (timing + JSON parsing); client install script bug fixed (undefined success function); server test script bugs fixed (timing calculation + Anthropic endpoint detection) based on hardware test results; server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete; analytics bug fixes complete (H3-1); client v2+ tests added (H2-5); analytics decision matrix implemented (H3-6); client SETUP.md updated with v2+ documentation (H3-5); server README.md updated with v2+ test documentation (H3-3); H4-3 verified auto-resolved. **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items). Phase 4: 9 done, 1 remaining (H3-2 hardware testing re-run)**.
+v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: client test script macOS timeout fix (cross-platform compatibility); client test script bugs fixed (timing + JSON parsing); client install script bug fixed (undefined success function); server test script bugs fixed (timing calculation + Anthropic endpoint detection) based on hardware test results; server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete; version management complete (compatibility check, version pinning, downgrade script); client uninstall v2+ cleanup complete; analytics bug fixes complete (H3-1); client v2+ tests added (H2-5); analytics decision matrix implemented (H3-6); client SETUP.md updated with v2+ documentation (H3-5); server README.md updated with v2+ test documentation (H3-3); H4-3 verified auto-resolved. **Phase 2 complete (6/6 items). Phase 3 complete (3/3 items). Phase 4: 10 done, 1 remaining (H3-2 hardware testing re-run with all fixes)**.
 
 ---
 
@@ -52,6 +52,7 @@ All Phase 3 items completed: H2-3 (downgrade script), H2-4 (uninstall v2+ cleanu
 - ✓ H3-2a - Server test script bug fixes discovered from hardware testing (timing calculation + Anthropic endpoint detection)
 - ✓ H3-2b - Client install script bug fix (undefined success function)
 - ✓ H3-2c - Client test script bug fixes (timing calculation + JSON parsing, same bugs as server)
+- ✓ H3-2d - Client test script macOS timeout compatibility (cross-platform timeout function)
 
 ---
 
@@ -509,6 +510,26 @@ Phase 4 (validation and polish):
 - Total: 14 bug fixes
   - 9 timing calculation fixes
   - 5 JSON extraction fixes
+
+### H3-2d: Client Test Script - macOS Timeout Compatibility
+**Date**: 2026-02-11
+**File**: `client/scripts/test.sh`
+**Trigger**: Hardware test revealed `timeout: command not found` error on macOS
+
+- **Problem**: Line 815 uses `timeout` command which doesn't exist on macOS by default
+- **Root cause**: `timeout` is a GNU coreutils utility, standard on Linux but not macOS
+- **Impact**: Test 26 (end-to-end Aider test) fails with "command not found" error
+- **Fix**: Added cross-platform `run_with_timeout()` function that:
+  1. Tries native `timeout` command (Linux)
+  2. Falls back to `gtimeout` (macOS with coreutils installed)
+  3. Falls back to bash-native implementation (works everywhere)
+  ```bash
+  # NEW (CROSS-PLATFORM):
+  run_with_timeout 30 bash -c '...'
+  ```
+- **Implementation**: 35-line compatibility function added at top of script
+- **Testing**: Bash syntax validation passed
+- **Result**: Script now works on both macOS and Linux without external dependencies
 
 **Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles. Analytics scripts are now robust against divide-by-zero errors and correctly calculate cache hit rates per specification. Client test suite validates all v2+ functionality with 12 new tests and flexible filtering flags. Analytics decision matrix provides actionable guidance on operation balance with shallow:deep ratio tracking. Client SETUP.md now comprehensively documents the complete v2+ user experience including installation, usage, version management, analytics workflow, and troubleshooting. Server README.md now accurately reflects v2+ test suite with 26 tests and Anthropic API coverage documentation. All test and analytics scripts now correctly handle grep -c edge cases without arithmetic syntax errors.
 

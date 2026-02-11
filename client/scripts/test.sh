@@ -760,7 +760,7 @@ if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "$
     fi
 
     END_TIME=$(date +%s%N 2>/dev/null || date +%s)
-    if [[ "$START_TIME" =~ N ]]; then
+    if [[ ${#START_TIME} -gt 12 ]]; then
         ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
     else
         ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))

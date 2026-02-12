@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# remote-ollama-proxy ai-server install script
+# self-sovereign-ollama ai-server install script
 # Automates the setup of Ollama + Tailscale for private LLM inference
 # Source: server/specs/* and server/SETUP.md
 
@@ -53,7 +53,7 @@ important_section() {
 
 # Banner
 echo "================================================"
-echo "  remote-ollama-proxy ai-server Installation"
+echo "  self-sovereign-ollama ai-server Installation"
 echo "================================================"
 echo ""
 
@@ -428,7 +428,7 @@ if [[ "$HAPROXY_CHOICE" == "Y" || "$HAPROXY_CHOICE" == "YES" ]]; then
 
     # Generate HAProxy configuration
     cat > "$HOME/.haproxy/haproxy.cfg" <<'HAPROXY_CFG_EOF'
-# HAProxy configuration for remote-ollama-proxy
+# HAProxy configuration for self-sovereign-ollama
 # Provides endpoint allowlisting and defense-in-depth security
 
 global
@@ -635,7 +635,7 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo -e "  Visit: ${BLUE}https://login.tailscale.com/admin/machines${NC}"
     echo -e "  Find this device: ${GREEN}$TAILSCALE_IP${NC}"
-    echo -e "  Set machine name to: ${GREEN}remote-ollama-proxy${NC}"
+    echo -e "  Set machine name to: ${GREEN}self-sovereign-ollama${NC}"
     echo ""
     section_break
     echo "┌─────────────────────────────────────────────────────────────┐"
@@ -726,11 +726,11 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo "  2. Install the client on your laptop/desktop:"
     echo ""
-    echo -e "     ${BLUE}bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama-proxy/master/client/scripts/install.sh)${NC}"
+    echo -e "     ${BLUE}bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/client/scripts/install.sh)${NC}"
     echo ""
     echo "  3. Test the connection from your client:"
     echo ""
-    echo -e "     ${BLUE}curl http://remote-ollama-proxy:11434/v1/models${NC}"
+    echo -e "     ${BLUE}curl http://self-sovereign-ollama:11434/v1/models${NC}"
     echo ""
     section_break
     echo "Troubleshooting commands:"

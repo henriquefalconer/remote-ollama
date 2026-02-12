@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-client – Setup Instructions (macOS)
+# self-sovereign-ollama ai-client – Setup Instructions (macOS)
 
 ## Installation
 
@@ -9,7 +9,7 @@ Choose one of the following methods:
 Run the installer directly via curl:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama-proxy/master/client/scripts/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/client/scripts/install.sh)
 ```
 
 ### Option 2: Clone and Install
@@ -17,8 +17,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-olla
 Clone the repository and run the installer locally:
 
 ```bash
-git clone https://github.com/henriquefalconer/remote-ollama-proxy.git
-cd remote-ollama-proxy/client
+git clone https://github.com/henriquefalconer/self-sovereign-ollama.git
+cd self-sovereign-ollama/client
 ./scripts/install.sh
 ```
 
@@ -444,7 +444,7 @@ If you installed via curl-pipe:
 
 ### Critical v0.0.3 Bug: Aider fails with 404 errors
 
-**Symptom**: If you installed v0.0.3 and Aider fails with 404 errors like `http://remote-ollama-proxy:11434/v1/api/show not found`.
+**Symptom**: If you installed v0.0.3 and Aider fails with 404 errors like `http://self-sovereign-ollama:11434/v1/api/show not found`.
 
 **Root Cause**: The v0.0.3 `env.template` incorrectly set `OLLAMA_API_BASE` with a `/v1` suffix. This causes Aider/LiteLLM to construct invalid URLs.
 
@@ -457,9 +457,9 @@ If you installed via curl-pipe:
 # Option 2: Manual fix - edit ~/.ai-client/env
 nano ~/.ai-client/env
 # Change this line:
-#   export OLLAMA_API_BASE=http://remote-ollama-proxy:11434/v1
+#   export OLLAMA_API_BASE=http://self-sovereign-ollama:11434/v1
 # To this (remove /v1):
-#   export OLLAMA_API_BASE=http://remote-ollama-proxy:11434
+#   export OLLAMA_API_BASE=http://self-sovereign-ollama:11434
 
 # Then reload your environment:
 exec $SHELL

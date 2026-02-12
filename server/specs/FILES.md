@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server Repository Layout (v2.0.0)
+# self-sovereign-ollama ai-server Repository Layout (v2.0.0)
 
 ```
 server/

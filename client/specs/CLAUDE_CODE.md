@@ -2,7 +2,7 @@
 
 ## Overview
 
-Claude Code is Anthropic's official CLI tool for autonomous coding with Claude models. This specification documents its integration with the remote-ollama-proxy infrastructure, including optional Ollama backend support.
+Claude Code is Anthropic's official CLI tool for autonomous coding with Claude models. This specification documents its integration with the self-sovereign-ollama infrastructure, including optional Ollama backend support.
 
 ## Architecture
 

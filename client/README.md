@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-client
+# self-sovereign-ollama ai-client
 
 macOS client setup for connecting to remote Ollama, supporting Aider (v1) and Claude Code (v2+).
 
@@ -11,7 +11,7 @@ All features are fully implemented and tested (40 tests passing).
 
 ## Overview
 
-The remote-ollama-proxy ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI and Anthropic-compatible APIs.
+The self-sovereign-ollama ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI and Anthropic-compatible APIs.
 
 **Available features**:
 - **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically (v1)
@@ -124,7 +124,7 @@ See [ANALYTICS_README.md](../ANALYTICS_README.md) for detailed analytics documen
 - Homebrew
 - Python 3.10+
 - WireGuard client (installed via Homebrew)
-- Access to a remote-ollama-proxy ai-server (public key must be added to router's VPN configuration)
+- Access to a self-sovereign-ollama ai-server (public key must be added to router's VPN configuration)
 
 ## Installation
 
@@ -206,7 +206,7 @@ The test suite validates:
 ### Sample Output
 
 ```
-remote-ollama-proxy ai-client Test Suite
+self-sovereign-ollama ai-client Test Suite
 Running 40 tests
 
 === Environment Configuration Tests ===

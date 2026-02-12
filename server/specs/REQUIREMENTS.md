@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server Requirements (v2.0.0)
+# self-sovereign-ollama ai-server Requirements (v2.0.0)
 
 ## macOS Server
 

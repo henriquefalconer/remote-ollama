@@ -1,6 +1,6 @@
-# remote-ollama-proxy ai-server API Contract (v2.0.0) - Client View
+# self-sovereign-ollama ai-server API Contract (v2.0.0) - Client View
 
-The remote-ollama-proxy ai-server exposes two API surfaces for different client tools:
+The self-sovereign-ollama ai-server exposes two API surfaces for different client tools:
 
 1. **OpenAI-compatible API** - For Aider and OpenAI-compatible tools
 2. **Anthropic-compatible API** - For Claude Code and Anthropic-compatible tools
@@ -13,7 +13,7 @@ Both APIs are served by the same Ollama server on port 11434.
 
 ## OpenAI-Compatible API
 
-The remote-ollama-proxy ai-server exposes the OpenAI API at the following base URL:
+The self-sovereign-ollama ai-server exposes the OpenAI API at the following base URL:
 
 ## Base URL
 
@@ -92,7 +92,7 @@ Do not make assumptions about server internals, model availability, or features 
 
 ## Anthropic-Compatible API
 
-The remote-ollama-proxy ai-server also exposes Anthropic Messages API compatibility at:
+The self-sovereign-ollama ai-server also exposes Anthropic Messages API compatibility at:
 
 ### Base URL
 

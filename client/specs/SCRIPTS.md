@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-client Scripts (v2.0.0)
+# self-sovereign-ollama ai-client Scripts (v2.0.0)
 
 ## scripts/install.sh
 

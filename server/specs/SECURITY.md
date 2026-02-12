@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server Security Model (v2.0.0)
+# self-sovereign-ollama ai-server Security Model (v2.0.0)
 
 ## Security Philosophy
 
@@ -31,7 +31,7 @@ WireGuard UDP port (only public exposure)
 │ DMZ Network (192.168.100.0/24)           │
 │                                           │
 │  ┌────────────────────────────────────┐  │
-│  │ remote-ollama-proxy server         │  │
+│  │ self-sovereign-ollama server         │  │
 │  │ IP: 192.168.100.10                 │  │
 │  │ Bind: 192.168.100.10:11434         │  │
 │  │                                    │  │
@@ -443,7 +443,7 @@ If migrating from Tailscale + HAProxy architecture:
 9. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
 
 **Client environment variable changes:**
-- Old: `OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1` (Tailscale hostname)
+- Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1` (Tailscale hostname)
 - New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1` (Static DMZ IP)
 
 ---

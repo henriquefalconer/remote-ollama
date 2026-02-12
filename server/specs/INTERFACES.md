@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server External Interfaces (v2.0.0)
+# self-sovereign-ollama ai-server External Interfaces (v2.0.0)
 
 ## Architecture Overview
 
@@ -308,7 +308,7 @@ If migrating from v1.1.1:
 - Install WireGuard client
 - Import VPN configuration
 - Update environment variables:
-  - Old: `OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1`
+  - Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1`
   - New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1`
 
 See `../client/specs/` for complete migration guide.

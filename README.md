@@ -3,7 +3,7 @@
  SPDX-License-Identifier: Proprietary
 -->
 
-# remote-ollama-proxy
+# self-sovereign-ollama
 
 A self-sovereign AI inference infrastructure using OpenWrt router, WireGuard VPN, and DMZ network segmentation for secure remote access to self-hosted Ollama.
 
@@ -16,7 +16,7 @@ This monorepo contains two main components:
 
 ## Overview
 
-The remote-ollama-proxy project provides a complete solution for running Ollama on your own hardware with secure remote access via self-hosted WireGuard VPN, zero public internet exposure, and zero third-party cloud dependencies.
+The self-sovereign-ollama project provides a complete solution for running Ollama on your own hardware with secure remote access via self-hosted WireGuard VPN, zero public internet exposure, and zero third-party cloud dependencies.
 
 ### Server (ai-server)
 - Runs Ollama on a dedicated Apple Silicon Mac with high unified memory

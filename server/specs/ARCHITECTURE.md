@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server Architecture (v2.0.0)
+# self-sovereign-ollama ai-server Architecture (v2.0.0)
 
 This project is intentionally separated into two independent layers:
 
@@ -46,7 +46,7 @@ OpenWrt Router (public IP)
    ↓
 DMZ Interface / VLAN
    ↓
-remote-ollama-proxy server
+self-sovereign-ollama server
 ```
 
 Optional:
@@ -132,7 +132,7 @@ See `ROUTER_SETUP.md` for complete router configuration instructions.
 │                DMZ Network (192.168.100.0/24)            │
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │  remote-ollama-proxy server (192.168.100.10)       │ │
+│  │  self-sovereign-ollama server (192.168.100.10)       │ │
 │  │  • Bind: 192.168.100.10:11434 (DMZ interface)      │ │
 │  │  • Serves: OpenAI + Anthropic APIs                 │ │
 │  │  • Outbound: Internet allowed (model pulls, updates)│ │
@@ -391,7 +391,7 @@ If migrating from v1.1.1:
 5. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
 
 **Client environment variables change**:
-- Old: `OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1` (Tailscale hostname)
+- Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1` (Tailscale hostname)
 - New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1` (Static DMZ IP)
 
 ---

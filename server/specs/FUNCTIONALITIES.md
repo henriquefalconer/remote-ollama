@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server Functionalities (v2.0.0)
+# self-sovereign-ollama ai-server Functionalities (v2.0.0)
 
 This specification documents functionality across both architectural layers.
 

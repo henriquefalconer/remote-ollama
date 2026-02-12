@@ -1,10 +1,10 @@
-# remote-ollama-proxy ai-server
+# self-sovereign-ollama ai-server
 
 Ollama server configuration for secure remote access from Apple Silicon Macs with high unified memory.
 
 ## Overview
 
-The remote-ollama-proxy ai-server configures Ollama to provide secure, remote LLM inference with:
+The self-sovereign-ollama ai-server configures Ollama to provide secure, remote LLM inference with:
 - **Two-layer security**: Network Perimeter (OpenWrt router + WireGuard VPN + DMZ isolation + Firewall) + AI Server (Ollama on DMZ)
 - **Dual API support**: OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages` endpoints
 - Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
@@ -239,7 +239,7 @@ The test suite validates:
 ### Sample Output
 
 ```
-remote-ollama-proxy ai-server Test Suite
+self-sovereign-ollama ai-server Test Suite
 Running 36 tests
 
 === Service Status Tests ===

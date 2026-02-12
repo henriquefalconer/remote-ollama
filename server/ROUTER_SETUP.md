@@ -1,6 +1,6 @@
 # OpenWrt Router Setup Guide (v2.0.0)
 
-This guide provides complete instructions for configuring an OpenWrt router to serve as the network perimeter for the remote-ollama-proxy infrastructure.
+This guide provides complete instructions for configuring an OpenWrt router to serve as the network perimeter for the self-sovereign-ollama infrastructure.
 
 ---
 
@@ -127,7 +127,7 @@ ip addr show
 1. Navigate to **Network → DHCP and DNS**
 2. Go to **Static Leases** tab
 3. Add static lease:
-   - Hostname: `remote-ollama-proxy`
+   - Hostname: `self-sovereign-ollama`
    - MAC Address: (AI server's MAC address)
    - IPv4 Address: `192.168.100.10`
 
@@ -135,7 +135,7 @@ ip addr show
 ```bash
 # Add static DHCP lease
 uci add dhcp host
-uci set dhcp.@host[-1].name='remote-ollama-proxy'
+uci set dhcp.@host[-1].name='self-sovereign-ollama'
 uci set dhcp.@host[-1].mac='XX:XX:XX:XX:XX:XX'  # Replace with actual MAC
 uci set dhcp.@host[-1].ip='192.168.100.10'
 
@@ -472,13 +472,13 @@ For automated configuration, save this as `/root/setup-ai-router.sh`:
 ```bash
 #!/bin/sh
 #
-# OpenWrt Router Setup for remote-ollama-proxy
+# OpenWrt Router Setup for self-sovereign-ollama
 # Usage: ./setup-ai-router.sh
 #
 
 set -e
 
-echo "=== OpenWrt Router Setup for remote-ollama-proxy ==="
+echo "=== OpenWrt Router Setup for self-sovereign-ollama ==="
 
 # 1. Install WireGuard
 echo "[1/7] Installing WireGuard packages..."

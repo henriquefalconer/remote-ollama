@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-client Repository Layout
+# self-sovereign-ollama ai-client Repository Layout
 
 ## Core Files (v1 - Aider)
 

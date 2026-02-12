@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server – Setup Instructions
+# self-sovereign-ollama ai-server – Setup Instructions
 
 Target: Apple Silicon Mac (high memory recommended) running recent macOS
 
@@ -290,7 +290,7 @@ The `warm-models.sh` script eliminates cold-start latency by pre-loading models 
 
 ```bash
 # Navigate to server directory if not already there
-cd /path/to/remote-ollama-proxy/server
+cd /path/to/self-sovereign-ollama/server
 
 # Warm specific models
 ./scripts/warm-models.sh qwen2.5-coder:32b deepseek-r1:70b

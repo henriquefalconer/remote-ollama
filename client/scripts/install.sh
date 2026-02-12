@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# self-sovereign-ollama ai-client install script
-# Configures environment to connect to self-sovereign-ollama ai-serverale
+# self-sovereign-ollama ai-client install script (v2)
+# Configures environment to connect to self-sovereign-ollama ai-server via WireGuard VPN
 # Works both from local clone and via curl-pipe installation
 # Source: client/specs/* and client/SETUP.md
 
@@ -149,154 +149,149 @@ fi
 
 info "Using Python: $PYTHON_PATH"
 
-# Step 5: Check/install Tailscale
-info "Checking for Tailscale..."
+echo ""
+echo "=== Step 5: WireGuard VPN Setup ==="
+echo ""
 
-# Check if Tailscale GUI is installed
-if ! [ -d "/Applications/Tailscale.app" ]; then
-    info "Installing Tailscale GUI via Homebrew..."
-    brew install --cask tailscale > /tmp/tailscale-gui-install.log 2>&1 || fatal "Failed to install Tailscale GUI"
-    info "✓ Tailscale GUI installed"
-else
-    info "✓ Tailscale GUI already installed"
-fi
-
-# Check if Tailscale CLI is available
-if ! command -v tailscale &> /dev/null; then
-    info "Installing Tailscale CLI tools..."
-    brew install tailscale > /tmp/tailscale-cli-install.log 2>&1 || fatal "Failed to install Tailscale CLI"
-    info "✓ Tailscale CLI installed"
-else
-    info "✓ Tailscale CLI already installed"
-fi
-
-# Check if already connected
-TAILSCALE_IP=""
-if command -v tailscale &> /dev/null; then
-    if tailscale status &> /dev/null 2>&1; then
-        # Check if we have an IP
-        POTENTIAL_IP=$(tailscale ip -4 2>/dev/null | head -n1)
-        if [[ -n "$POTENTIAL_IP" ]]; then
-            TAILSCALE_IP="$POTENTIAL_IP"
-            info "✓ Tailscale already connected! IP: $TAILSCALE_IP"
-        fi
-    fi
-fi
-
-# If not connected, start connection flow
-if [[ -z "$TAILSCALE_IP" ]]; then
-    echo ""
-    echo "================================================"
-    echo "  Tailscale Connection Required"
-    echo "================================================"
-    echo ""
-
-    # Try GUI first
-    if [ -d "/Applications/Tailscale.app" ]; then
-        info "Opening Tailscale GUI..."
-        open -a Tailscale 2>/dev/null && info "✓ Tailscale GUI opened" || warn "Failed to open GUI"
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  First-time Tailscale Setup Instructions"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-        echo "Complete these steps (first-time setup may take a few minutes):"
-        echo ""
-        echo "  1. macOS will prompt you for several permissions:"
-        echo "     → System Extension: Click 'Allow' (required for VPN)"
-        echo "     → Notifications: Click 'Allow' (recommended for connection status)"
-        echo "     → Start on log in: Click 'Yes, start on log in' (recommended)"
-        echo "       This ensures Tailscale reconnects automatically after reboot"
-        echo ""
-        echo "  2. You may need to activate the VPN configuration"
-        echo "     → If Tailscale doesn't connect automatically, open:"
-        echo "       System Settings > VPN > Tailscale"
-        echo "     → Toggle the switch to activate it"
-        echo ""
-        echo "  3. In the Tailscale app or browser window:"
-        echo "     → Click 'Log in' or 'Sign up' to create/access your account"
-        echo "     → Follow the browser authentication flow"
-        echo "     → If creating a new account, you'll see a survey form"
-        echo "       (Fill it out or skip - it's optional for getting started)"
-        echo "     → You may see an introduction/tutorial - you can skip it"
-        echo "       (Look for 'Skip this introduction' to speed up setup)"
-        echo "     → Approve the device in your Tailscale admin (if prompted)"
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-    elif command -v tailscale &> /dev/null; then
-        # Fall back to CLI
-        info "Starting Tailscale CLI authentication..."
-        echo ""
-        echo "Running: tailscale up"
-        echo "Please follow the URL that appears to authenticate."
-        echo ""
-        tailscale up || warn "Tailscale up returned an error, but you may still be able to authenticate"
-        echo ""
+# Check if WireGuard is installed
+if ! command -v wg &> /dev/null && ! brew list wireguard-tools &> /dev/null 2>&1; then
+    info "Installing WireGuard tools..."
+    if brew install wireguard-tools > /tmp/wireguard-install.log 2>&1; then
+        info "✓ WireGuard tools installed"
     else
-        fatal "Neither Tailscale GUI nor CLI is available. Installation may have failed."
+        error "Failed to install WireGuard tools"
+        cat /tmp/wireguard-install.log
+        exit 1
     fi
-
-    # Wait with interactive prompt (no timeout)
-    info "Waiting for Tailscale connection..."
-    echo "Press Enter after completing the steps above to check connection status"
-    echo ""
-
-    CONNECTED=false
-
-    while [[ "$CONNECTED" == "false" ]]; do
-        # Wait for user to press Enter
-        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... " < /dev/tty
-
-        # Check status
-        echo "Checking Tailscale status..."
-        if command -v tailscale &> /dev/null && tailscale status &> /dev/null 2>&1; then
-            POTENTIAL_IP=$(tailscale ip -4 2>/dev/null | head -n1)
-            if [[ -n "$POTENTIAL_IP" ]]; then
-                TAILSCALE_IP="$POTENTIAL_IP"
-                CONNECTED=true
-                echo ""
-                info "✓ Tailscale connected! IP: $TAILSCALE_IP"
-                echo ""
-                break
-            else
-                warn "Tailscale is running but not yet connected"
-                echo "Tips:"
-                echo "  • Make sure you completed the authentication in your browser"
-                echo "  • Check if VPN is activated in System Settings > VPN"
-                echo "  • Try opening the Tailscale app to see its status"
-                echo ""
-            fi
-        else
-            warn "Tailscale is not responding"
-            echo "Tips:"
-            echo "  • Make sure you allowed the System Extension"
-            echo "  • Check System Settings > Privacy & Security for pending permissions"
-            echo "  • Try opening the Tailscale app manually"
-            echo "  • You can also exit (Ctrl+C) and re-run this script after setup"
-            echo ""
-        fi
-    done
+else
+    info "✓ WireGuard tools already installed"
 fi
+
+# Create WireGuard config directory
+WG_DIR="$HOME/.ai-client/wireguard"
+mkdir -p "$WG_DIR"
+chmod 700 "$WG_DIR"
+
+# Generate keypair if not exists
+WG_PRIVATE_KEY="$WG_DIR/privatekey"
+WG_PUBLIC_KEY="$WG_DIR/publickey"
+
+if [[ ! -f "$WG_PRIVATE_KEY" ]]; then
+    info "Generating WireGuard keypair..."
+    wg genkey | tee "$WG_PRIVATE_KEY" | wg pubkey > "$WG_PUBLIC_KEY"
+    chmod 600 "$WG_PRIVATE_KEY"
+    chmod 644 "$WG_PUBLIC_KEY"
+    info "✓ Keypair generated"
+else
+    info "✓ Keypair already exists"
+fi
+
+# Display public key
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}Your WireGuard Public Key:${NC}"
+echo ""
+cat "$WG_PUBLIC_KEY"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+warn "IMPORTANT: Send this public key to your router administrator"
+echo "  They will need to add it as a VPN peer on the OpenWrt router."
+echo ""
+
+# Prompt for server IP
+echo "=== Server Configuration ==="
+echo ""
+info "Enter the AI server IP address (default: 192.168.100.10)"
+read -r -p "Server IP: " SERVER_IP < /dev/tty
+SERVER_IP=${SERVER_IP:-192.168.100.10}
+echo ""
+
+# Validate IP format
+if ! echo "$SERVER_IP" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+    error "Invalid IP address format: $SERVER_IP"
+    exit 1
+fi
+
+# Prompt for VPN configuration
+info "Enter the router's WireGuard endpoint (format: IP:PORT)"
+echo "  Example: 1.2.3.4:51820"
+read -r -p "Endpoint: " WG_ENDPOINT < /dev/tty
+
+if [[ -z "$WG_ENDPOINT" ]]; then
+    error "Endpoint is required"
+    exit 1
+fi
+
+info "Enter the router's WireGuard public key"
+read -r -p "Router public key: " WG_SERVER_PUBKEY < /dev/tty
+
+if [[ -z "$WG_SERVER_PUBKEY" ]]; then
+    error "Router public key is required"
+    exit 1
+fi
+
+info "Enter your VPN client IP address (assigned by admin)"
+echo "  Example: 10.0.0.2"
+read -r -p "Client VPN IP: " WG_CLIENT_IP < /dev/tty
+
+if [[ -z "$WG_CLIENT_IP" ]]; then
+    error "Client VPN IP is required"
+    exit 1
+fi
+
+info "Enter allowed IPs (default: 192.168.100.0/24 for DMZ access only)"
+read -r -p "Allowed IPs: " WG_ALLOWED_IPS < /dev/tty
+WG_ALLOWED_IPS=${WG_ALLOWED_IPS:-192.168.100.0/24}
+
+# Generate WireGuard configuration
+WG_CONFIG="$WG_DIR/wg0.conf"
+info "Generating WireGuard configuration..."
+
+cat > "$WG_CONFIG" <<EOF
+[Interface]
+PrivateKey = $(cat "$WG_PRIVATE_KEY")
+Address = $WG_CLIENT_IP/24
+
+[Peer]
+PublicKey = $WG_SERVER_PUBKEY
+Endpoint = $WG_ENDPOINT
+AllowedIPs = $WG_ALLOWED_IPS
+PersistentKeepalive = 25
+EOF
+
+chmod 600 "$WG_CONFIG"
+info "✓ WireGuard configuration generated: $WG_CONFIG"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}WireGuard Configuration:${NC}"
+echo ""
+cat "$WG_CONFIG"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Connection instructions
+warn "Next Steps for VPN Connection:"
+echo "  1. Wait for router admin confirmation (peer added)"
+echo "  2. Import configuration: sudo wg-quick up wg0"
+echo "     Or use WireGuard GUI app to import $WG_CONFIG"
+echo "  3. Verify: wg show"
+echo ""
+
+read -r -p "Press Enter after you have connected to the VPN to continue..." < /dev/tty
+echo ""
 
 section_break "Environment Configuration"
 
-# Step 6: Prompt for server hostname
-echo ""
-prompt "Enter the server hostname (default: self-sovereign-ollama):"
-read -r SERVER_HOSTNAME < /dev/tty
-if [[ -z "$SERVER_HOSTNAME" ]]; then
-    SERVER_HOSTNAME="self-sovereign-ollama"
-fi
-info "Using server hostname: $SERVER_HOSTNAME"
-
-# Step 7: Create ~/.ai-client directory
+# Step 6: Create ~/.ai-client directory
 info "Creating configuration directory..."
 CLIENT_DIR="$HOME/.ai-client"
 mkdir -p "$CLIENT_DIR"
 info "✓ Created: $CLIENT_DIR"
 
-# Step 8: Generate environment file from template
+# Step 7: Generate environment file from template
 info "Generating environment configuration..."
 
 # Dual-mode strategy: local clone vs curl-pipe
@@ -312,15 +307,16 @@ if [[ "$0" == "bash" || "$0" == "/dev/stdin" || ! -f "$LOCAL_TEMPLATE" ]]; then
 # self-sovereign-ollama ai-client environment configuration
 # Source: client/specs/API_CONTRACT.md
 # Generated from env.template by install.sh -- do not edit manually
-export OLLAMA_API_BASE=http://__HOSTNAME__:11434
-export OPENAI_API_BASE=http://__HOSTNAME__:11434/v1
+# NOTE: Requires active WireGuard VPN connection to reach server
+export OLLAMA_API_BASE=http://__SERVER_IP__:11434
+export OPENAI_API_BASE=http://__SERVER_IP__:11434/v1
 export OPENAI_API_KEY=ollama
 # export AIDER_MODEL=ollama/<model-name>
 
 # Claude Code + Ollama (v2+, optional, uncomment if using claude-ollama alias)
 # export ANTHROPIC_AUTH_TOKEN=ollama
 # export ANTHROPIC_API_KEY=""
-# export ANTHROPIC_BASE_URL=http://__HOSTNAME__:11434
+# export ANTHROPIC_BASE_URL=http://__SERVER_IP__:11434
 TEMPLATE_EOF
 )
 else
@@ -329,12 +325,12 @@ else
     ENV_TEMPLATE_CONTENT=$(cat "$LOCAL_TEMPLATE")
 fi
 
-# Substitute __HOSTNAME__ placeholder
+# Substitute __SERVER_IP__ placeholder (or __HOSTNAME__ for backward compatibility)
 ENV_FILE="$CLIENT_DIR/env"
-echo "$ENV_TEMPLATE_CONTENT" | sed "s/__HOSTNAME__/$SERVER_HOSTNAME/g" > "$ENV_FILE"
+echo "$ENV_TEMPLATE_CONTENT" | sed "s/__HOSTNAME__/$SERVER_IP/g; s/__SERVER_IP__/$SERVER_IP/g" > "$ENV_FILE"
 info "✓ Created: $ENV_FILE"
 
-# Step 9: Prompt for shell profile modification consent
+# Step 8: Prompt for shell profile modification consent
 echo ""
 prompt "Update $SHELL_PROFILE to source the environment? (required for tools to work) [Y/n]:"
 read -r CONSENT < /dev/tty
@@ -371,7 +367,7 @@ fi
 
 section_break "Tool Installation"
 
-# Step 10: Install pipx with Python version compatibility check
+# Step 9: Install pipx with Python version compatibility check
 info "Checking for pipx..."
 PIPX_NEEDS_REINSTALL=false
 
@@ -437,7 +433,7 @@ fi
 export PIPX_DEFAULT_PYTHON="$PYTHON_PATH"
 pipx ensurepath > /dev/null 2>&1 || warn "pipx ensurepath failed (non-fatal)"
 
-# Step 11: Install Aider with specific Python version
+# Step 10: Install Aider with specific Python version
 info "Checking for Aider..."
 
 # Ensure pipx uses the correct Python version
@@ -467,7 +463,7 @@ else
     fi
 fi
 
-# Step 12: Optional Claude Code + Ollama integration (v2+)
+# Step 11: Optional Claude Code + Ollama integration (v2+)
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Optional: Claude Code + Ollama Integration (v2+)"
@@ -506,8 +502,8 @@ if [[ "$CLAUDE_CONSENT" =~ ^[Yy]$ ]]; then
         cat >> "$SHELL_PROFILE" <<CLAUDE_PROFILE_EOF
 
 $CLAUDE_MARKER_START
-# Claude Code with local Ollama backend
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://$SERVER_HOSTNAME:11434 claude --dangerously-skip-permissions'
+# Claude Code with local Ollama backend (requires WireGuard VPN)
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://$SERVER_IP:11434 claude --dangerously-skip-permissions'
 $CLAUDE_MARKER_END
 CLAUDE_PROFILE_EOF
 
@@ -515,6 +511,7 @@ CLAUDE_PROFILE_EOF
 
         echo ""
         info "To use Claude Code with Ollama:"
+        echo "  • Connect to WireGuard VPN first"
         echo "  • Open a new terminal (or run: source $SHELL_PROFILE)"
         echo "  • Run: claude-ollama"
         echo ""
@@ -526,7 +523,7 @@ else
     info "Skipping Claude Code alias (you can use standard 'claude' with Anthropic cloud)"
 fi
 
-# Step 13: Copy uninstall.sh for curl-pipe users
+# Step 12: Copy uninstall.sh for curl-pipe users
 UNINSTALL_SCRIPT="$CLIENT_DIR/uninstall.sh"
 
 # Detect if we have local uninstall.sh
@@ -547,15 +544,16 @@ fi
 
 section_break "Connectivity Test"
 
-# Step 14: Run connectivity test
-TEST_URL="http://$SERVER_HOSTNAME:11434/v1/models"
+# Step 13: Run connectivity test
+TEST_URL="http://$SERVER_IP:11434/v1/models"
 SERVER_REACHABLE=false
 if curl -sf --max-time 5 "$TEST_URL" &> /dev/null; then
     info "✓ Server connected: $TEST_URL"
     SERVER_REACHABLE=true
 else
     warn "Server not reachable at $TEST_URL"
-    echo "  → Install server first, or check Tailscale ACLs and device tags"
+    echo "  → Ensure WireGuard VPN is connected and server is running"
+    echo "  → Check with: wg show"
 fi
 
 # Final summary
@@ -576,10 +574,19 @@ elif [[ "$USER_SHELL" == "bash" ]]; then
     RELOAD_CMD="exec bash"
 fi
 
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}Your WireGuard Public Key (for router admin):${NC}"
+echo ""
+cat "$WG_PUBLIC_KEY"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
 if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo -e "  ✓ Aider installed: ${GREEN}ready${NC}"
-    echo -e "  ✓ Connected to server: ${GREEN}$SERVER_HOSTNAME${NC}"
-    echo -e "  ✓ Models available: ${GREEN}1${NC}"
+    echo -e "  ✓ Connected to server: ${GREEN}$SERVER_IP${NC}"
+    echo -e "  ✓ WireGuard VPN: ${GREEN}connected${NC}"
     echo ""
     section_break
     echo "┌─────────────────────────────────────────────────────────────┐"
@@ -595,6 +602,12 @@ if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo -e "     ${BLUE}aider${NC}                          # Uses default model"
     echo -e "     ${BLUE}aider --model ollama/model-name${NC}    # Select specific model"
     echo ""
+    echo "  3. VPN Management:"
+    echo ""
+    echo -e "     ${BLUE}wg show${NC}                        # Check VPN status"
+    echo -e "     ${BLUE}sudo wg-quick down wg0${NC}        # Disconnect VPN"
+    echo -e "     ${BLUE}sudo wg-quick up wg0${NC}          # Reconnect VPN"
+    echo ""
 else
     echo -e "  ✓ Aider installed: ${GREEN}ready${NC}"
     echo -e "  ⚠ Server: ${YELLOW}not reachable${NC}"
@@ -604,14 +617,27 @@ else
     echo "│ What's Next                                                 │"
     echo "└─────────────────────────────────────────────────────────────┘"
     echo ""
-    echo "  1. Ensure server is running and Tailscale is connected"
+    echo "  1. Connect to WireGuard VPN:"
     echo ""
-    echo "  2. Reload your shell:"
+    echo -e "     ${BLUE}sudo wg-quick up wg0${NC}"
+    echo "     Or import $WG_CONFIG in WireGuard GUI app"
+    echo ""
+    echo "  2. Verify VPN connection:"
+    echo ""
+    echo -e "     ${BLUE}wg show${NC}"
+    echo -e "     ${BLUE}curl http://$SERVER_IP:11434/v1/models${NC}"
+    echo ""
+    echo "  3. Reload your shell:"
     echo ""
     echo -e "     ${BLUE}$RELOAD_CMD${NC}"
     echo ""
-    echo "  3. Start using Aider:"
+    echo "  4. Start using Aider:"
     echo ""
     echo -e "     ${BLUE}aider --model ollama/model-name${NC}"
+    echo ""
+    echo "  Troubleshooting:"
+    echo "  • Ensure router admin has added your public key as a VPN peer"
+    echo "  • Check router firewall allows DMZ access (192.168.100.0/24)"
+    echo "  • Verify server is running: ssh into server and check Ollama status"
     echo ""
 fi

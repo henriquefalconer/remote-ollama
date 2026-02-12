@@ -19,7 +19,7 @@
 | **Client Version Mgmt** (3 scripts) | 100% | `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`. |
 | **Client Config** | 100% | `env.template` — uses static DMZ IP `192.168.100.10`, correct env vars. |
 | **Server Scripts** (4 files) | ~65% | 3 of 4 complete (warm-models.sh, uninstall.sh, test.sh). 1 remaining (install.sh). |
-| **Client Scripts** (3 files) | ~90% | 2 of 3 complete (test.sh, uninstall.sh). 1 remaining (install.sh). |
+| **Client Scripts** (3 files) | 100% | All 3 complete (install.sh, test.sh, uninstall.sh). ✅ |
 
 **Target Architecture** (v2):
 ```
@@ -140,35 +140,35 @@ P1 and P2 share no code and communicate only via `client/specs/API_CONTRACT.md`.
 
 **Spec authority**: `client/specs/SCRIPTS.md`
 
-### P2a: `client/scripts/install.sh` (617 lines — substantial rewrite)
+### P2a: `client/scripts/install.sh` — Tailscale → WireGuard ✅ COMPLETE
 
-~350 lines of reusable code; ~140 lines to remove; ~180 lines to add.
+**Status**: Completed 2026-02-12
 
-**Remove:**
-- Entire Tailscale section: GUI check, install, connection flow, IP detection (lines 152-280)
+**Removed:**
+- ✅ Entire Tailscale section: GUI check, install, connection flow, IP detection (lines 152-280, ~129 lines)
 
-**Keep (with modifications):**
-- System validation, Homebrew, Python install (lines 1-150)
-- Config directory creation (lines 293-297)
-- Env file generation (lines 299-336) — update hostname default
-- Shell profile modification (lines 337-370)
-- pipx + Aider installation (lines 372-468)
-- Claude Code alias (lines 470-527) — update to use IP
-- Uninstall script copy (lines 529-546)
-- Connectivity test (lines 548-559) — update URL
-- Final summary structure (lines 560-617) — update messaging
+**Preserved (with modifications):**
+- ✅ System validation, Homebrew, Python install (lines 1-150)
+- ✅ Config directory creation
+- ✅ Env file generation — updated to use `$SERVER_IP` placeholder, added VPN requirement comment
+- ✅ Shell profile modification
+- ✅ pipx + Aider installation
+- ✅ Claude Code alias — updated to use `$SERVER_IP`, added VPN requirement comment
+- ✅ Uninstall script copy
+- ✅ Connectivity test — updated URL to use `$SERVER_IP`, VPN-specific error messages
+- ✅ Final summary structure — updated messaging with VPN instructions
 
-**Add:**
-- WireGuard install: `brew install wireguard-tools`
-- Keypair generation: `wg genkey | tee privatekey | wg pubkey > publickey`
-- Key storage in `~/.ai-client/wireguard/` with `chmod 600` on private key
-- Public key display with instructions to send to router admin
-- Server IP prompt (default `192.168.100.10`)
-- VPN server pubkey/endpoint prompts
-- WireGuard config file generation (`~/.ai-client/wireguard/wg0.conf`)
-- Import instructions for WireGuard app or `wg-quick`
-- VPN connection confirmation before connectivity test
-- Updated final summary (display pubkey, remind to send to admin, remind to connect VPN)
+**Added:**
+- ✅ WireGuard install: `brew install wireguard-tools` with error handling
+- ✅ Keypair generation: `wg genkey | tee privatekey | wg pubkey > publickey`
+- ✅ Key storage in `~/.ai-client/wireguard/` with `chmod 600` on private key
+- ✅ Public key display with instructions to send to router admin (twice: after generation and in final summary)
+- ✅ Server IP prompt (default `192.168.100.10`) with IP format validation
+- ✅ VPN server pubkey/endpoint prompts with validation
+- ✅ WireGuard config file generation (`~/.ai-client/wireguard/wg0.conf`) with proper permissions
+- ✅ Import instructions for WireGuard app or `wg-quick`
+- ✅ VPN connection confirmation before connectivity test
+- ✅ Updated final summary: display pubkey, remind to send to admin, VPN management commands, troubleshooting tips
 
 ### P2b: `client/scripts/uninstall.sh` — Tailscale → WireGuard ✅ COMPLETE
 

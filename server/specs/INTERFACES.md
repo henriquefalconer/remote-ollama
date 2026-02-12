@@ -1,41 +1,68 @@
-# remote-ollama-proxy ai-server External Interfaces
+# remote-ollama-proxy ai-server External Interfaces (v2.0.0)
 
 ## Architecture Overview
 
-The server exposes APIs through a **three-layer architecture**:
+The server exposes APIs through a **two-layer architecture**:
 
 ```
-Client → Tailscale → HAProxy (100.x.x.x:11434) → Ollama (127.0.0.1:11434)
+VPN Client → WireGuard (Router) → Firewall → Ollama (192.168.100.10:11434)
 ```
 
-- **Clients** connect to `remote-ollama-proxy:11434` (Tailscale DNS resolution)
-- **HAProxy** listens on Tailscale interface, forwards allowlisted endpoints only
-- **Ollama** bound to loopback only, unreachable from network
+- **VPN Clients** connect via WireGuard tunnel to router
+- **Router Firewall** allows VPN → DMZ port 11434 only
+- **Ollama** bound to DMZ interface, serves all API endpoints directly
 
-This provides **intentional exposure** - only explicitly-forwarded endpoints are reachable.
+This provides **network perimeter security** - only VPN-authenticated clients can reach the server.
+
+---
+
+## Network Access Path
+
+### Layer 1: VPN Connection
+
+**Client establishes WireGuard VPN:**
+- Client connects to router's public IP (WireGuard UDP port, default 51820)
+- Per-peer public key authentication
+- Client assigned VPN IP (10.10.10.x)
+
+### Layer 2: Firewall Forwarding
+
+**Router firewall allows:**
+- VPN → DMZ port 11434 (TCP)
+- All other VPN → DMZ traffic denied
+- VPN → LAN traffic denied
+- VPN → WAN traffic denied
+
+### Layer 3: Ollama Binding
+
+**Ollama listens on:**
+- DMZ interface: `192.168.100.10:11434` (recommended)
+- Or all interfaces: `0.0.0.0:11434` (simpler configuration)
 
 ---
 
 ## Dual API Surface
 
-Ollama exposes two distinct API compatibility layers. HAProxy forwards both on the same port (11434):
+Ollama exposes two distinct API compatibility layers on the same port (11434):
 
 1. **OpenAI-Compatible API** - For Aider, Continue, and OpenAI-compatible tools
 2. **Anthropic-Compatible API** - For Claude Code and Anthropic-compatible tools
 
 Both served by the same Ollama process with no additional Ollama configuration required.
 
+**Note**: All endpoints accessible to VPN clients (no application-layer filtering). Security provided by network perimeter (router firewall + VPN authentication).
+
 ---
 
-## OpenAI-Compatible API (v1)
+## OpenAI-Compatible API
 
 ### Client Perspective
 
-- HTTP API at `http://remote-ollama-proxy:11434/v1`
+- HTTP API at `http://192.168.100.10:11434/v1`
 - Fully OpenAI-compatible schema (chat completions endpoint)
-- No custom routes or extensions in v1
+- Accessible only from VPN clients
 
-### Forwarded Endpoints (via HAProxy)
+### Available Endpoints
 
 **Primary endpoints:**
 - `GET /v1/models` - List available models
@@ -43,33 +70,39 @@ Both served by the same Ollama process with no additional Ollama configuration r
 - `POST /v1/chat/completions` - Chat completion requests (streaming & non-streaming)
 - `POST /v1/responses` - Experimental non-stateful responses endpoint (Ollama 0.5.0+)
 
-**Ollama Native API** (metadata only, safe operations):
+**Ollama Native API:**
 - `GET /api/version` - Ollama version info
 - `GET /api/tags` - List models
 - `POST /api/show` - Model details
-
-All other endpoints blocked by HAProxy.
+- `POST /api/generate` - Native generate endpoint
+- `POST /api/pull` - Download models
+- `POST /api/push` - Upload models (if registry configured)
+- `POST /api/create` - Create model from Modelfile
+- `DELETE /api/delete` - Delete models
 
 ### Security Note
 
-Ollama also serves additional native endpoints at `/api/*` (e.g., `/api/pull`, `/api/delete`, `/api/create`), but these are **not forwarded** by HAProxy and are therefore unreachable from clients. This prevents:
-- Accidental model deletion
-- Unauthorized model pulls (consuming disk space)
-- Model creation/modification
+**All Ollama endpoints are accessible to VPN clients**, including potentially destructive operations like:
+- Model deletion (`DELETE /api/delete`)
+- Model downloads (`POST /api/pull`) - can consume disk space
+- Model creation (`POST /api/create`)
 
-The guaranteed contract for clients is the forwarded endpoints only (see `../client/specs/API_CONTRACT.md`).
+**Security model**: Trust VPN clients completely. Network perimeter (firewall + VPN auth) provides access control.
+
+**Clients should use responsibly**. See `../client/specs/API_CONTRACT.md` for recommended usage patterns.
 
 ---
 
-## Anthropic-Compatible API (v2+)
+## Anthropic-Compatible API
 
 ### Client Perspective
 
-- HTTP API at `http://remote-ollama-proxy:11434/v1/messages`
+- HTTP API at `http://192.168.100.10:11434/v1/messages`
 - Anthropic Messages API compatibility layer
 - Experimental feature (Ollama 0.5.0+)
+- Accessible only from VPN clients
 
-### Forwarded Endpoints (via HAProxy)
+### Available Endpoints
 
 **Primary endpoint:**
 - `POST /v1/messages` - Anthropic-style message creation
@@ -90,35 +123,36 @@ The guaranteed contract for clients is the forwarded endpoints only (see `../cli
 
 ---
 
-## HAProxy Configuration Interface
+## Network Configuration Interface
 
-### Configuration File
+### DMZ Network
 
-- Location: `~/.haproxy/haproxy.cfg`
-- Format: HAProxy configuration syntax
-- Managed by: `install.sh` and `uninstall.sh`
+**Server static IP:**
+- IP: `192.168.100.10` (default, configurable during install)
+- Subnet: `192.168.100.0/24` (default, configurable)
+- Gateway: `192.168.100.1` (router)
+- DNS: Router or public DNS (configurable)
 
-### Minimal Configuration (v1)
+**Configured via:**
+- `networksetup` command (macOS)
+- Set during `install.sh` execution
+- Can be manually changed in System Settings → Network
 
-The proxy is configured for **transparent forwarding**:
-- No authentication
-- No TLS termination (Tailscale already provides encryption)
-- No request mutation
-- No content inspection
-- Endpoint allowlisting only
+### Verify Configuration
 
-Future hardening can be added without client changes (see `HARDENING_OPTIONS.md`).
+**Check static IP:**
+```bash
+networksetup -getinfo "Ethernet"
+```
 
-### Service Management
+**Test connectivity:**
+```bash
+# Router
+ping -c 3 192.168.100.1
 
-HAProxy runs as a user-level LaunchAgent:
-
-- **LaunchAgent plist**: `~/Library/LaunchAgents/com.haproxy.plist`
-- **Check status**: `launchctl list | grep com.haproxy`
-- **Start**: `launchctl kickstart gui/$(id -u)/com.haproxy`
-- **Stop**: `launchctl stop gui/$(id -u)/com.haproxy`
-- **Restart**: `launchctl kickstart -k gui/$(id -u)/com.haproxy`
-- **View logs**: `tail -f /tmp/haproxy.log` (if enabled)
+# Internet
+ping -c 3 8.8.8.8
+```
 
 ---
 
@@ -126,33 +160,79 @@ HAProxy runs as a user-level LaunchAgent:
 
 ### Environment Variables
 
-- **OLLAMA_HOST**: Must be set to `127.0.0.1` for loopback binding
+- **OLLAMA_HOST**: Set to DMZ IP (`192.168.100.10`) or all interfaces (`0.0.0.0`)
 - **OLLAMA_ORIGINS**: Optional CORS configuration (if browser clients needed)
 
 ### LaunchAgent Configuration
 
 - **LaunchAgent plist**: `~/Library/LaunchAgents/com.ollama.plist`
-- **Binding**: Enforced via `OLLAMA_HOST=127.0.0.1` in plist
+- **Binding**: Enforced via `OLLAMA_HOST` in plist environment variables
 - **Check status**: `launchctl list | grep com.ollama`
 - **Start**: `launchctl kickstart gui/$(id -u)/com.ollama`
 - **Stop**: `launchctl stop gui/$(id -u)/com.ollama`
 - **Restart**: `launchctl kickstart -k gui/$(id -u)/com.ollama`
 - **View logs**: `tail -f /tmp/ollama.stdout.log` or `/tmp/ollama.stderr.log`
 
+### Verify Binding
+
+```bash
+# Check which interface Ollama is listening on
+lsof -i :11434
+
+# Should show:
+# - 192.168.100.10:11434 (DMZ interface), or
+# - *:11434 (all interfaces if 0.0.0.0)
+```
+
 ---
 
-## Management Interface (minimal)
+## Router Management Interface
 
-### Tailscale ACLs
+**Configuration**: See `ROUTER_SETUP.md` for complete guide
 
-- Managed via Tailscale admin console (external to this monorepo)
-- Controls which devices can reach port 11434 on the server
-- Tag-based or device-based allowlisting
+### WireGuard VPN
 
-### Optional Components
+**Managed via router SSH or LuCI:**
+- Add/remove VPN peers
+- View tunnel status: `wg show wg0`
+- Check handshakes and traffic
 
-- Model pre-warming script (`warm-models.sh`)
-- Test validation script (`test.sh`)
+### Firewall Rules
+
+**Managed via router SSH or LuCI:**
+- View rules: `iptables -L -n -v`
+- Modify rules: UCI commands or LuCI web interface
+- Test connectivity from VPN client
+
+### Router Access
+
+**SSH** (recommended):
+```bash
+ssh root@192.168.100.1  # From DMZ server
+ssh root@192.168.1.1     # From LAN
+```
+
+**LuCI Web Interface**:
+```
+http://192.168.100.1  # From DMZ server
+http://192.168.1.1    # From LAN
+```
+
+---
+
+## Management Interface (Server)
+
+### Optional Scripts
+
+- **Model pre-warming**: `server/scripts/warm-models.sh`
+- **Test validation**: `server/scripts/test.sh`
+- **Uninstall**: `server/scripts/uninstall.sh`
+
+### Configuration Files
+
+- **Ollama plist**: `~/Library/LaunchAgents/com.ollama.plist`
+- **Ollama models**: `~/.ollama/models/`
+- **Ollama logs**: `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`
 
 ---
 
@@ -171,57 +251,67 @@ HAProxy runs as a user-level LaunchAgent:
 - Anthropic SDK (Python, TypeScript) with `base_url` override
 
 **Custom scripts:**
-- Direct HTTP requests to forwarded endpoints
-- Must go through HAProxy (direct Ollama access blocked by loopback binding)
+- Direct HTTP requests to any Ollama endpoint
+- Must connect via VPN (direct access from internet blocked by firewall)
 
 ### Connection Requirements
 
-1. Device must be connected to Tailscale tailnet
-2. Device must be authorized via ACLs for port 11434
-3. Connect to `remote-ollama-proxy:11434` (Tailscale DNS handles resolution)
+1. **Install WireGuard client** on device
+2. **Import VPN configuration** (provided by router admin)
+3. **Connect to VPN** - establishes encrypted tunnel
+4. **Connect to server** - `http://192.168.100.10:11434`
+
+See `../client/specs/` for complete client setup instructions.
 
 ---
 
 ## Network Security Boundaries
 
-### Layer 1: Tailscale (Who can connect)
+### Layer 1: Router Firewall (Who can reach server)
 
-- Controls: Device authorization
-- Enforcement: WireGuard tunnel, ACL rules
-- Management: Tailscale admin console
+- Controls: Network access to DMZ
+- Enforcement: Firewall rules (iptables)
+- Management: Router configuration (see `ROUTER_SETUP.md`)
 
-### Layer 2: HAProxy (What they can access)
+### Layer 2: WireGuard VPN (Who can authenticate)
 
-- Controls: Endpoint allowlisting
-- Enforcement: Path-based forwarding rules
-- Management: `~/.haproxy/haproxy.cfg`
+- Controls: Per-peer authentication
+- Enforcement: Public key cryptography
+- Management: Router WireGuard configuration
 
-### Layer 3: Loopback (What can physically arrive)
+### Layer 3: DMZ Isolation (What server can access)
 
-- Controls: Process network reachability
-- Enforcement: OS kernel socket binding
-- Management: `OLLAMA_HOST` environment variable
+- Controls: Server's network reachability
+- Enforcement: Firewall rules (DMZ → LAN denied)
+- Management: Router firewall zones
 
 See `SECURITY.md` for complete security model.
 
 ---
 
-## Migration from Direct Exposure
+## Migration from v1 (Tailscale + HAProxy)
 
-If previously deployed without proxy layer:
+If migrating from v1.1.1:
 
 ### For Server Operator
 
-1. Install HAProxy via `install.sh`
-2. Update Ollama plist: `OLLAMA_HOST=127.0.0.1`
-3. Restart Ollama service
-4. Verify isolation: `lsof -i :11434` (should show loopback only)
+1. **Configure router** - Follow `ROUTER_SETUP.md`
+2. **Configure static IP** - Run `install.sh` (v2) or configure manually
+3. **Update Ollama binding** - Change `OLLAMA_HOST=127.0.0.1` to `OLLAMA_HOST=192.168.100.10`
+4. **Restart Ollama** - `launchctl kickstart -k gui/$(id -u)/com.ollama`
+5. **Verify binding** - `lsof -i :11434` (should show DMZ IP)
+6. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
 
 ### For Clients
 
-**No changes required** - hostname and port remain the same (`remote-ollama-proxy:11434`).
+**Changes required**:
+- Install WireGuard client
+- Import VPN configuration
+- Update environment variables:
+  - Old: `OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1`
+  - New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1`
 
-HAProxy transparently replaces direct Ollama access at the same network endpoint.
+See `../client/specs/` for complete migration guide.
 
 ---
 
@@ -229,37 +319,51 @@ HAProxy transparently replaces direct Ollama access at the same network endpoint
 
 ### Latency
 
-HAProxy adds **<1ms** per request:
-- Path matching only (no content inspection)
-- Transparent forwarding
-- No TLS termination (Tailscale handles encryption)
+Network path adds minimal overhead:
+- WireGuard encryption/decryption: ~0.1-0.5ms
+- Router forwarding: <1ms
+- No application-layer proxy (direct to Ollama)
 
 For typical inference:
 - Model loading: 1-10 seconds
 - Token generation: 50-200ms per token
-- Proxy overhead: <1ms (negligible)
+- Network overhead: ~1-2ms (negligible)
 
 ### Throughput
 
-HAProxy can handle:
-- 10,000+ requests/second (proxy capacity)
+Router forwarding can handle:
+- 10,000+ packets/second (routing capacity)
 - Limited by Ollama concurrency (typically 5-10 concurrent)
+- Upload bandwidth recommended: ≥100 Mb/s for low-latency streaming
 
-Proxy is never the bottleneck for this use case.
+Router is never the bottleneck for this use case.
+
+### Bandwidth
+
+**Upload bandwidth critical** for streaming responses:
+- Typical streaming response: 50-200 tokens/second
+- Token size: ~4 bytes
+- Streaming bandwidth: ~1-2 KB/s per active stream
+- Recommended: ≥100 Mb/s upload for worldwide low-latency
 
 ---
 
 ## Future Expansion Options
 
-The proxy architecture enables future enhancements **without re-architecture**:
+The architecture enables future enhancements **without re-architecture**:
 
+**Network layer** (router):
+- Connection rate limiting (iptables)
+- Per-peer bandwidth limits (QoS)
+- Intrusion detection system (Snort, Suricata)
+- Web application firewall (ModSecurity)
+
+**Application layer** (add reverse proxy in DMZ if needed):
 - Request size limits
-- Concurrency limits
-- Per-device credentials
-- Rate limiting
+- Endpoint allowlisting (v1 HAProxy-style)
+- API key authentication
 - Access logging with attribution
 - Model allowlists
-- mTLS client certificates
 
 See `HARDENING_OPTIONS.md` for complete design space (not requirements, just options).
 
@@ -269,11 +373,22 @@ See `HARDENING_OPTIONS.md` for complete design space (not requirements, just opt
 
 This interface design provides:
 
-> **Secure, transparent access through intentional exposure**
+> **Self-sovereign network access with defense-in-depth**
 
-- Clients connect to same hostname and port (`remote-ollama-proxy:11434`)
-- HAProxy ensures only allowlisted endpoints are reachable
-- Ollama stays isolated on loopback (kernel-enforced)
-- Future hardening can be added without client changes
+**Network perimeter:**
+- Router controls all ingress (single point of administration)
+- WireGuard VPN provides per-peer authentication
+- DMZ isolation prevents lateral movement
 
-Three security layers, zero client complexity.
+**Server simplicity:**
+- Ollama serves all endpoints directly (no proxy)
+- Static IP configuration (no dynamic DNS)
+- Standard macOS service management (launchd)
+
+**Security properties:**
+- No public exposure of inference port
+- Cryptographic authentication (WireGuard keys)
+- Network segmentation (DMZ isolation)
+- Minimal attack surface
+
+Two architectural layers, complete network control.

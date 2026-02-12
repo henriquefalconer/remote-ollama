@@ -35,12 +35,12 @@ export ANTHROPIC_API_KEY=sk-ant-...  # Real API key
 ```bash
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
-export ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434
+export ANTHROPIC_BASE_URL=http://192.168.100.10:11434
 ```
 
 **Shell Alias** (recommended for easy switching):
 ```bash
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434 claude --dangerously-skip-permissions'
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.100.10:11434 claude --dangerously-skip-permissions'
 ```
 
 ## Ralph Loop Workflows
@@ -243,7 +243,7 @@ This measures:
 ```
 
 Installs:
-- Tailscale
+- WireGuard VPN client
 - Python 3.10+
 - pipx
 - Aider
@@ -280,7 +280,7 @@ If yes, append to shell profile:
 ```bash
 # >>> claude-ollama >>>
 # Claude Code with local Ollama backend
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434 claude --dangerously-skip-permissions'
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.100.10:11434 claude --dangerously-skip-permissions'
 # <<< claude-ollama <<<
 ```
 
@@ -364,9 +364,9 @@ alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_
 
 ### Ollama Backend
 
-- All data stays on private Tailscale network
+- All data stays on private VPN network
 - Zero external transmission
-- Tailscale ACL-based security
+- WireGuard VPN authentication
 - No built-in authentication (network-level only)
 
 ### Best Practice

@@ -1,148 +1,173 @@
-# remote-ollama-proxy ai-server Security Model
+# remote-ollama-proxy ai-server Security Model (v2.0.0)
 
 ## Security Philosophy
 
-This architecture implements **defense in depth** through three independent layers, each enforcing a different class of security invariant:
+This architecture implements **defense in depth** through two independent layers:
 
-1. **Network-layer isolation** (Tailscale) - Controls who can send packets
-2. **Application-layer proxy** (HAProxy) - Controls what packets can do
-3. **OS-enforced binding** (Loopback) - Controls what packets can physically arrive
+1. **Network Perimeter Layer** (Router + VPN + DMZ) - Controls who can reach the server and enforces network isolation
+2. **AI Server Layer** (Ollama) - Provides inference service, secured by network perimeter
 
-Each layer is independently enforceable and provides security even if others are misconfigured.
+Each layer is independently auditable and provides security even if the other has misconfigurations.
 
 ---
 
 ## Network Topology
 
 ```
-Authorized client (Tailscale device)
-    │
-    ▼
-Tailscale overlay network (100.x.x.x)
-    │
-    ▼
+Internet
+   ↓
+WireGuard UDP port (only public exposure)
+   ↓
 ┌──────────────────────────────────────────┐
-│ Server macOS                              │
+│ OpenWrt Router (Network Perimeter)       │
+│  • Firewall: deny all except WireGuard   │
+│  • VPN → DMZ: port 11434 only            │
+│  • VPN → LAN: deny                       │
+│  • DMZ → LAN: deny                       │
+└────────────┬─────────────────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────────┐
+│ DMZ Network (192.168.100.0/24)           │
 │                                           │
-│  HAProxy: 100.x.x.x:11434 ←─────┐        │
-│      │                           │        │
-│      │ (forwards)                │        │
-│      ▼                           │        │
-│  Ollama: 127.0.0.1:11434         │        │
-│                                  │        │
-│  Everything else:                │        │
-│    • Bound to 127.0.0.1 only     │        │
-│    • Or not listening at all     │        │
-│                                  │        │
-│  ← ONLY this socket exposed ─────┘        │
-│     to Tailscale network                  │
+│  ┌────────────────────────────────────┐  │
+│  │ remote-ollama-proxy server         │  │
+│  │ IP: 192.168.100.10                 │  │
+│  │ Bind: 192.168.100.10:11434         │  │
+│  │                                    │  │
+│  │ • Ollama: listens on DMZ interface│  │
+│  │ • No LAN access                   │  │
+│  │ • Internet outbound allowed       │  │
+│  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
+
+LAN Network (192.168.1.0/24) - Isolated
+  • No access to/from DMZ
+  • No access to/from VPN
+  • Admin access to router only
 ```
 
 ---
 
-## Layer 1: Network Isolation (Tailscale)
+## LAYER 1: Network Perimeter Security (Router + VPN + DMZ)
 
 ### What it controls
 
-**Who can send packets to the server**
+**Who can reach the server and what network resources are accessible**
 
-### Implementation
+### Implementation Components
 
-- Tailscale tailnet membership (only invited devices can reach server IP)
-- ACL rules enforce tag-based or device-based allowlists for port 11434
-- Zero public internet exposure (no port forwarding, no dynamic DNS)
+**1. Router Firewall (OpenWrt)**
+- Default deny all inbound from WAN
+- Only WireGuard UDP port exposed publicly
+- Stateful packet inspection
+- Per-zone firewall rules (WAN, LAN, DMZ, VPN)
 
-### Security properties
+**2. WireGuard VPN**
+- Per-peer public key authentication (no shared secrets)
+- Modern cryptography (ChaCha20, Poly1305, Curve25519)
+- Minimal attack surface (~4,000 lines of code)
+- No user/password authentication (key-based only)
 
-✅ Prevents unauthorized devices from reaching the server
-✅ Cryptographically secure WireGuard tunnel
-✅ Centralized access revocation (remove device from tailnet)
-✅ Near-instant propagation of ACL changes
+**3. DMZ Network Segmentation**
+- Separate VLAN or physical interface for AI server
+- Firewall isolation from LAN
+- Outbound internet allowed (for model downloads, OS updates)
+- No inbound connections except via VPN
 
-❌ Does not prevent authorized clients from misusing the API
-❌ Does not prevent accidental exposure of other services
-❌ Does not protect against Ollama vulnerabilities
+### Firewall Rules (Enforced at Router)
 
----
+```
+# WAN → Router
+accept: WireGuard UDP port only
+deny: everything else
 
-## Layer 2: Application Proxy (HAProxy)
+# VPN → DMZ
+accept: TCP port 11434 to 192.168.100.10
+deny: everything else
 
-### What it controls
+# VPN → LAN
+deny: all
 
-**What authorized packets are allowed to do**
+# VPN → WAN
+deny: all (no internet access from VPN clients)
 
-### Implementation
+# DMZ → LAN
+deny: all
 
-- HAProxy listens on Tailscale interface only (`100.x.x.x:11434`)
-- Forwards only specific endpoints to Ollama
-- Ollama remains unreachable from network (loopback-only binding)
+# DMZ → WAN
+accept: all (outbound internet for models, updates)
 
-### Forwarded endpoints (allowlist)
+# LAN → DMZ
+accept: all (admin access, optional)
 
-**OpenAI-compatible API:**
-- `POST /v1/chat/completions`
-- `GET /v1/models`
-- `GET /v1/models/{model}`
-- `POST /v1/responses` (experimental, Ollama 0.5.0+)
+# LAN → Router
+accept: SSH, LuCI (admin only)
+```
 
-**Anthropic-compatible API:**
-- `POST /v1/messages`
+### Security Properties
 
-**Ollama native API** (metadata only, safe operations):
-- `GET /api/version`
-- `GET /api/tags` (list models)
-- `POST /api/show` (model info)
+✅ **Single ingress point** - Router is only entry to network
+✅ **Public exposure minimized** - Only WireGuard UDP port public
+✅ **Cryptographic authentication** - Per-peer keys, no passwords
+✅ **Network segmentation** - DMZ isolated from LAN
+✅ **Blast radius containment** - Server compromise cannot reach LAN
+✅ **Peer revocation** - Remove public key from router immediately
 
-All other paths blocked by default.
+❌ Does not prevent authorized VPN clients from abusing inference API
+❌ Does not prevent Ollama vulnerabilities from being exploited
+❌ Does not inspect application-layer requests
 
-### Security properties
+### Why Network Perimeter is Fundamental
 
-✅ **Intentional exposure** - Only explicitly-forwarded endpoints are reachable
-✅ **Prevents reachability creep** - New Ollama features do not become automatically exposed
-✅ **Single choke point** - All network access funnels through one inspectable boundary
-✅ **OS-enforced** - Loopback binding means proxy is the only path to Ollama
-✅ **Future-expandable** - Can add rate limits, auth, logging without re-architecture
+Network perimeter transforms security model from:
 
-❌ Does not inspect request content (transparent forwarding)
-❌ Does not prevent authorized clients from making valid-but-abusive requests
-❌ Does not protect against Ollama API vulnerabilities (passes requests through)
-
-### Why this is fundamental
-
-The proxy transforms the security model from:
-
-> "Ollama is exposed; remember not to expose anything else"
+> "Server is public; trust application to secure itself"
 
 To:
 
-> "Nothing is exposed unless explicitly wired through the proxy"
+> "Server is private; only authorized devices can reach it"
 
-This is **enforced by the kernel** (loopback binding), not by memory or discipline.
+This is **enforced by router hardware** and kernel packet filtering, not by application configuration.
 
 ---
 
-## Layer 3: Loopback Binding (OS-enforced)
+## LAYER 2: AI Server Security (Ollama)
 
 ### What it controls
 
-**What packets can physically arrive at a process**
+**Inference service operation within DMZ**
 
 ### Implementation
 
-- Ollama configured to bind `127.0.0.1:11434` only (via `OLLAMA_HOST`)
-- LaunchAgent plist explicitly sets `OLLAMA_HOST=127.0.0.1`
-- No listening sockets bound to `0.0.0.0` or Tailscale interfaces
+- Ollama binds to DMZ interface (`192.168.100.10:11434`) or all interfaces (`0.0.0.0:11434`)
+- LaunchAgent plist sets `OLLAMA_HOST=192.168.100.10` (or `0.0.0.0`)
+- No built-in authentication (relies on network perimeter)
+- Logs stored locally (`/tmp/ollama.*.log`)
+- No outbound telemetry
 
-### Security properties
+### Security Properties
 
-✅ **Kernel-enforced isolation** - Ollama cannot receive network packets
-✅ **Immune to misconfiguration** - Even if proxy fails, Ollama stays unreachable
-✅ **Prevents accidental exposure** - Dev tools, debug servers, experiments stay local
-✅ **Defense in depth** - Provides security even if proxy is misconfigured
+✅ **Stateless** - No persistent user sessions or authentication tokens
+✅ **No secrets** - No API keys, passwords, or sensitive data stored
+✅ **Local logs only** - No external logging or telemetry
+✅ **User-level process** - Runs as user, not root
+✅ **Auto-restart** - LaunchAgent keeps service running
 
-❌ Does not prevent local processes from accessing Ollama
-❌ Does not prevent proxy from forwarding malicious requests
+❌ **No authentication** - Trusts network perimeter completely
+❌ **All endpoints exposed** - No application-layer filtering
+❌ **No rate limiting** - Can be overwhelmed by authorized clients
+❌ **No request inspection** - Cannot detect malicious payloads
+
+### Why Application Layer Has Minimal Security
+
+Design decision: **Security is enforced at network perimeter, not application layer.**
+
+Rationale:
+- Simpler architecture (no HAProxy, no endpoint filtering)
+- Fewer moving parts (less to break)
+- Ollama focuses on inference, router focuses on security
+- Clear separation of concerns
 
 ---
 
@@ -150,33 +175,39 @@ This is **enforced by the kernel** (loopback binding), not by memory or discipli
 
 ### ✅ Completely Prevented
 
-**Accidental exposure:**
-- Dev servers running on random ports
-- Debug dashboards (Prometheus, Grafana, etc.)
-- Ad-hoc scripts listening on network interfaces
-- Future Ollama features you didn't intend to expose
+**Unauthorized network access:**
+- No public access to inference port (11434)
+- Only WireGuard-authenticated devices can reach server
+- LAN devices cannot reach DMZ server (unless admin allows)
+- VPN clients cannot reach LAN
+- Internet users cannot scan or discover server
 
-**Reachability creep:**
-- "I forgot this service was running"
-- "I didn't know that port was exposed"
-- Time-dependent exposure (ports opened during debugging)
+**Network-based reconnaissance:**
+- Port scanning from internet sees only WireGuard UDP port
+- No service fingerprinting possible without VPN access
+- DMZ isolation prevents lateral movement if server compromised
 
-**Re-binding risks:**
-- Ollama accidentally bound to `0.0.0.0`
-- Configuration drift over time
-- Experiments that persist
+**Common misconfigurations:**
+- Port forwarding mistakes (11434 never forwarded)
+- Accidental 0.0.0.0 binding still protected by firewall
+- DMZ prevents server from accessing LAN even if misconfigured
 
 ### ⚠️ Mitigated (but not eliminated)
 
 **Resource exhaustion:**
-- Proxy can add rate limits (future)
-- Proxy can cap concurrent requests (future)
+- Firewall can limit connection rates (configure on router)
+- Ollama still vulnerable to authorized client abuse
 - OS still vulnerable to local resource pressure
 
-### ❌ Explicitly Out of Scope (v1 threat model)
+**Lateral movement after compromise:**
+- DMZ isolation contains server compromise
+- Attacker cannot reach LAN from compromised DMZ server
+- But attacker has outbound internet (can exfiltrate data or download tools)
 
-**Abuse by authorized clients:**
-- Excessive inference requests
+### ❌ Explicitly Out of Scope (v2 threat model)
+
+**Authorized client abuse:**
+- Excessive inference requests from valid VPN clients
 - Prompt injection attacks
 - Extraction of model weights
 - Quality-of-service violations
@@ -185,37 +216,58 @@ This is **enforced by the kernel** (loopback binding), not by memory or discipli
 - Ollama API bugs
 - Model-level exploits
 - Prompt-level attacks
+- Zero-day exploits in Ollama
 
 **Host compromise:**
-- Kernel vulnerabilities
-- Privilege escalation
-- Local malware
+- macOS kernel vulnerabilities
+- Privilege escalation on server
+- Local malware on server
 
-These are valid concerns but **not addressed by this architecture**.
+**Outbound data exfiltration:**
+- If server compromised, attacker has outbound internet
+- Can exfiltrate data, communicate with C&C servers
+- Trade-off: Outbound access needed for model downloads and OS updates
+- **Alternative**: Fully air-gapped DMZ (no outbound internet, manual model loading)
+
+These are valid concerns but **not fully addressed by this architecture**.
 
 ---
 
 ## Access Control & Revocation
 
-### Adding a client
+### Adding a VPN client
 
-1. Invite device to Tailscale tailnet
-2. Add device or tag to ACL allowlist for port 11434
-3. Client can now reach HAProxy (and only HAProxy)
+1. **Client generates WireGuard keypair** (during install)
+2. **Client sends public key to admin** (via secure channel)
+3. **Admin adds public key to router** WireGuard config
+4. **Admin applies firewall rules** allowing new peer to reach DMZ port 11434
+5. **Client establishes VPN tunnel** automatically
+
+See `ROUTER_SETUP.md` for detailed configuration steps.
 
 ### Revoking access
 
-1. Remove device from tailnet, OR
-2. Remove device/tag from ACL allowlist
+**Immediate revocation:**
+1. **Remove public key** from router WireGuard config
+2. **Reload WireGuard** service on router
+3. Client can no longer establish tunnel
 
-Changes propagate near-instantly (Tailscale WireGuard tunnel update).
+**Firewall-level revocation (slower):**
+1. Add client VPN IP to firewall block list
+2. Client can establish tunnel but cannot reach DMZ
 
-### Per-device granularity
+**Key rotation:**
+- Generate new server keypair
+- Redistribute new server public key to all clients
+- Forces all clients to reconfigure
 
-Tailscale ACLs support:
-- Device-specific rules (allow only laptop-X)
-- Tag-based rules (allow all devices tagged `ai-client`)
-- Time-based rules (optional, via Tailscale policy)
+### Per-peer granularity
+
+WireGuard configuration supports:
+- **Per-peer AllowedIPs** - Restrict what each peer can access
+- **Per-peer firewall rules** - Different access levels for different clients
+- **Per-peer bandwidth limits** - QoS on router (optional)
+- **Per-peer connection logging** - Audit who connects when
 
 ---
 
@@ -223,40 +275,65 @@ Tailscale ACLs support:
 
 ### Logging
 
+**Server:**
 - Ollama logs remain local (`/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`)
-- HAProxy logs remain local (if enabled)
 - No outbound telemetry or analytics
 - Log rotation recommended (via `launchd` or external tool)
+
+**Router:**
+- Connection logs: `/var/log/messages` (or via `logread`)
+- Firewall logs: can be enabled for port 11434 connections
+- WireGuard handshake logs: useful for auditing access
+- Log retention: configure on router (limited flash storage)
 
 ### Updates
 
 Regular security updates required for:
+
+**Server:**
 - macOS system and security patches
-- Tailscale client
-- Ollama binary
-- HAProxy binary (via Homebrew)
+- Ollama binary (via Homebrew or manual)
 
-### Process ownership
+**Router:**
+- OpenWrt firmware updates
+- OpenWrt package updates (WireGuard, firewall, etc.)
 
+**Clients:**
+- WireGuard client software
+- Operating system updates
+
+### Process Ownership
+
+**Server:**
 - Ollama runs as user-level LaunchAgent (not root)
-- HAProxy runs as user-level LaunchAgent (not root)
 - No elevated privileges required during normal operation
+
+**Router:**
+- OpenWrt services run as appropriate users (root for firewall, dedicated users for others)
+- WireGuard runs as kernel module (Linux kernel)
 
 ### Monitoring
 
-Optional (not required for security):
-- HAProxy statistics socket (local Unix socket)
-- Ollama health checks (via proxy)
+**Server monitoring (optional):**
+- Ollama health checks (via VPN client)
 - System resource monitoring (CPU, memory, GPU)
+- Model loading success/failure
+- API response times
+
+**Router monitoring (recommended):**
+- WireGuard tunnel status (`wg show`)
+- Firewall connection counters (`iptables -L -v -n`)
+- CPU/memory usage (`top`, `free`)
+- Bandwidth usage per peer (via QoS logs)
 
 ---
 
 ## CORS Considerations
 
 - Default Ollama CORS restrictions apply
-- HAProxy does not modify CORS headers (transparent forwarding)
+- No proxy to modify CORS headers
 - Optional: Set `OLLAMA_ORIGINS` environment variable if browser-based clients are planned
-- Browser clients must go through proxy (cannot reach Ollama directly)
+- Browser clients must connect via VPN (same as CLI clients)
 
 ---
 
@@ -264,64 +341,148 @@ Optional (not required for security):
 
 ### In scope (addressed by this architecture)
 
-✅ Unauthorized network access
-✅ Accidental service exposure
-✅ Configuration drift
-✅ Reachability creep
+✅ Unauthorized network access (no public exposure)
+✅ Network-based reconnaissance (only WireGuard port visible)
+✅ Lateral movement (DMZ isolation)
+✅ Per-device authentication (WireGuard per-peer keys)
+✅ Device revocation (remove public key)
 
 ### Out of scope (explicitly not addressed)
 
-❌ Authorized client abuse
-❌ Application-layer vulnerabilities
-❌ Host-level compromise
-❌ Physical access attacks
-❌ Social engineering
+❌ Authorized VPN client abuse (inference overload, malicious prompts)
+❌ Application-layer vulnerabilities (Ollama bugs, zero-days)
+❌ Host-level compromise (macOS exploits, malware)
+❌ Physical access attacks (physical server access)
+❌ Social engineering (stolen private keys, phishing admin)
+❌ Outbound data exfiltration (if DMZ server compromised)
+❌ Supply chain attacks (compromised Ollama binary, model backdoors)
 
-This is intentional. The architecture focuses on **network-layer and exposure-control threats**, not application-layer or abuse-mitigation threats.
+This is intentional. The architecture focuses on **network perimeter security**, not application-layer or host-level security.
 
-Future hardening options (rate limits, auth, quotas) can be layered on top **without changing this base architecture**. See `HARDENING_OPTIONS.md` for design space.
+Future hardening options can be added **without changing this base architecture**:
+- Air-gapped DMZ (no outbound internet)
+- Application-layer rate limiting (reverse proxy in DMZ)
+- Request inspection and filtering (WAF on router)
+- Intrusion detection system (IDS via OpenWrt packages)
+
+See `HARDENING_OPTIONS.md` for design space.
 
 ---
 
-## Comparison with Direct Exposure
+## Comparison with v1 (Tailscale + HAProxy)
 
-### Direct Ollama exposure (insecure)
-
-```
-Client → Tailscale → Ollama (0.0.0.0:11434)
-```
-
-**Problems:**
-- Everything Ollama exposes is reachable (including future endpoints)
-- Other services accidentally bound to network are exposed
-- No choke point for future controls (auth, rate limits, etc.)
-- Security depends on remembering to bind everything correctly
-
-### Proxy architecture (this design)
+### v1 Architecture (Tailscale + HAProxy + Loopback)
 
 ```
-Client → Tailscale → HAProxy (100.x.x.x:11434) → Ollama (127.0.0.1:11434)
+Client → Tailscale (100.x.x.x) → HAProxy → Ollama (127.0.0.1:11434)
 ```
+
+**Characteristics:**
+- Three-layer defense (Tailscale, HAProxy, loopback binding)
+- Application-layer endpoint filtering (HAProxy allowlist)
+- Third-party VPN service (Tailscale)
+- More complex (3 components to manage)
 
 **Benefits:**
-- Only explicitly-forwarded endpoints are reachable
-- Kernel-enforced isolation (loopback binding)
-- Single choke point for future controls
-- Security is structural, not procedural
+- Endpoint allowlisting (can block specific Ollama endpoints)
+- Simpler client setup (Tailscale GUI)
+
+**Drawbacks:**
+- Depends on Tailscale service availability
+- HAProxy adds complexity (configuration, monitoring)
+- Less control over network perimeter
+
+### v2 Architecture (WireGuard + DMZ) - Current
+
+```
+Client → WireGuard VPN → Router Firewall → Ollama (DMZ)
+```
+
+**Characteristics:**
+- Two-layer defense (network perimeter + DMZ isolation)
+- Network-layer access control (firewall rules)
+- Self-sovereign infrastructure (OpenWrt + WireGuard)
+- Simpler (fewer moving parts)
+
+**Benefits:**
+- No third-party VPN service dependency
+- Full control over router and firewall
+- Simpler architecture (no HAProxy)
+- DMZ isolation adds defense-in-depth
+
+**Drawbacks:**
+- No application-layer endpoint filtering (all Ollama endpoints accessible to VPN clients)
+- More complex initial router setup
+- Requires network administration skills
+
+### Comparison Summary
+
+| Aspect | v1 (Tailscale + HAProxy) | v2 (WireGuard + DMZ) |
+|--------|--------------------------|----------------------|
+| **Third-party dependency** | Yes (Tailscale) | No (self-sovereign) |
+| **Endpoint filtering** | Yes (HAProxy allowlist) | No (firewall only) |
+| **Network segmentation** | No | Yes (DMZ) |
+| **Complexity** | Higher (3 components) | Lower (2 layers) |
+| **Control** | Less (Tailscale managed) | Full (you own router) |
+| **Setup difficulty** | Easier (Tailscale GUI) | Harder (router config) |
 
 ---
 
-## Migration from Direct Exposure
+## Migration from v1 to v2
 
-If Ollama was previously bound to `0.0.0.0` or Tailscale interface:
+If migrating from Tailscale + HAProxy architecture:
 
-1. Install and configure HAProxy (see `SCRIPTS.md`)
-2. Update Ollama LaunchAgent plist: `OLLAMA_HOST=127.0.0.1`
-3. Restart Ollama service
-4. Verify loopback binding: `lsof -i :11434` (should show `127.0.0.1` only)
-5. Test client connectivity through proxy
+1. **Set up router** - Follow `ROUTER_SETUP.md` to configure OpenWrt, WireGuard, DMZ, firewall
+2. **Configure static DMZ IP** - Assign `192.168.100.10` to server (or configure your own)
+3. **Update Ollama binding** - Change `OLLAMA_HOST=127.0.0.1` to `OLLAMA_HOST=192.168.100.10` in LaunchAgent plist
+4. **Restart Ollama** - `launchctl kickstart -k gui/$(id -u)/com.ollama`
+5. **Verify binding** - `lsof -i :11434` (should show DMZ IP)
+6. **Distribute VPN configs** - Generate WireGuard configs for each client
+7. **Update clients** - Install WireGuard, import configs, update environment variables
+8. **Test connectivity** - VPN clients should reach `192.168.100.10:11434`
+9. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
 
-**No client changes required** - hostname and port remain the same (`remote-ollama-proxy:11434`).
+**Client environment variable changes:**
+- Old: `OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1` (Tailscale hostname)
+- New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1` (Static DMZ IP)
+
+---
+
+## Outbound Internet Trade-offs
+
+### Current Default: Outbound Allowed from DMZ
+
+**Why:**
+- Model downloads (`ollama pull`)
+- OS updates (macOS security patches, Homebrew)
+- Ollama binary updates
+- Dependency updates
+
+**Trade-off:**
+- If server compromised, attacker can exfiltrate data
+- Attacker can communicate with command & control servers
+- Attacker can download additional tools
+
+### Alternative: Fully Air-Gapped DMZ
+
+**Configuration:**
+- Set router firewall: `DMZ → WAN: deny all`
+- Manually transfer models to server via USB or LAN transfer
+- Manually apply security updates during maintenance windows
+
+**Benefits:**
+- No data exfiltration possible if server compromised
+- No C&C communication possible
+- Maximum security posture
+
+**Drawbacks:**
+- Manual model management (slower, more error-prone)
+- Delayed security updates (must remember to apply)
+- More operational overhead
+
+**Recommendation for self-sovereign networks:**
+- **High-security environments**: Air-gap DMZ, manual model loading
+- **Convenience-first environments**: Allow outbound, accept risk
 
 ---
 
@@ -329,13 +490,23 @@ If Ollama was previously bound to `0.0.0.0` or Tailscale interface:
 
 This architecture provides a **foundation** for future security enhancements without re-architecture:
 
-- Endpoint allowlisting (already in place via proxy config)
+**Network-layer:**
+- Connection rate limiting (router firewall)
+- Per-peer bandwidth limits (QoS)
+- Geo-IP blocking (if WireGuard keys stolen)
+- Port knocking (additional obfuscation)
+
+**Application-layer** (requires reverse proxy in DMZ):
 - Request size limits
-- Concurrency limits
-- Per-device credentials
-- Rate limiting
-- Access logging with attribution
-- Model allowlists
+- Endpoint allowlisting (v1 HAProxy-style)
+- API key authentication
+- Rate limiting per client
+- Request logging with attribution
+
+**DMZ-layer:**
+- Intrusion detection system (Snort, Suricata via OpenWrt)
+- Web application firewall (ModSecurity)
+- Outbound firewall logs and alerts
 
 See `HARDENING_OPTIONS.md` for complete design space (not requirements, just options).
 
@@ -345,12 +516,29 @@ See `HARDENING_OPTIONS.md` for complete design space (not requirements, just opt
 
 For production deployments:
 
-1. **Verify loopback binding** - Run `lsof -i :11434` on server
-2. **Test isolation** - Attempt direct Ollama access from client (should fail)
-3. **Review Tailscale ACLs** - Ensure only intended devices/tags have access
-4. **Monitor logs** - Check for unexpected access patterns
-5. **Update regularly** - Keep all components patched
-6. **Document changes** - Track ACL modifications and access grants
+**Server validation:**
+1. **Verify DMZ binding** - Run `lsof -i :11434` on server (should show DMZ IP)
+2. **Test LAN isolation** - Attempt to ping LAN devices from server (should fail)
+3. **Test outbound** - Attempt to reach internet from server (should succeed or fail based on configuration)
+4. **Monitor logs** - Check `/tmp/ollama.*.log` for unexpected activity
+
+**Router validation:**
+1. **Test VPN connectivity** - Connect from client, verify tunnel established
+2. **Test firewall rules** - Attempt to reach port 11434 from VPN client (should succeed)
+3. **Test LAN isolation** - Attempt to reach LAN from VPN client (should fail)
+4. **Test WAN exposure** - Port scan public IP from internet (should only see WireGuard UDP)
+5. **Review firewall logs** - Check for unexpected connection attempts
+
+**Client validation:**
+1. **Test VPN-only access** - Disconnect VPN, attempt to reach server (should fail)
+2. **Test inference** - Connect via VPN, run sample inference (should succeed)
+3. **Monitor connection** - Check for unexpected disconnections or slowdowns
+
+**Ongoing:**
+- Update regularly (server, router, clients)
+- Rotate WireGuard keys periodically (optional, good practice)
+- Review firewall logs monthly
+- Document all configuration changes
 
 ---
 
@@ -358,10 +546,24 @@ For production deployments:
 
 This architecture provides:
 
-> **Structural security through intentional exposure**
+> **Self-sovereign network security through defense-in-depth**
 
-- Network layer controls **who** can reach the server (Tailscale)
-- Proxy layer controls **what** they can do (HAProxy)
-- Loopback binding ensures **nothing else** is accidentally reachable (OS kernel)
+Two independent layers:
+1. **Network Perimeter (Router + VPN + DMZ)** - Controls who can reach the server
+2. **AI Server (Ollama)** - Provides inference service, secured by perimeter
 
-Each layer is independently verifiable and provides defense in depth.
+Security properties:
+- ✅ No public exposure of inference port
+- ✅ Per-device cryptographic authentication (WireGuard)
+- ✅ Network segmentation (DMZ isolation from LAN)
+- ✅ Single ingress point (router)
+- ✅ No third-party VPN dependency (self-sovereign)
+- ✅ Device revocation (remove public key)
+- ✅ Blast radius containment (DMZ → LAN denied)
+
+Trade-offs:
+- ⚠️ No application-layer endpoint filtering (all Ollama endpoints accessible to VPN clients)
+- ⚠️ Outbound internet allowed from DMZ by default (can be air-gapped with manual model loading)
+- ⚠️ More complex router setup compared to Tailscale
+
+Each layer is independently auditable and provides security even if the other is misconfigured.

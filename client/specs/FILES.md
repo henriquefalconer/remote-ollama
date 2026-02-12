@@ -58,7 +58,10 @@ client/
 ~/.ai-client/
 ├── env                         # Generated environment configuration
 ├── uninstall.sh                # Copied for curl-pipe users
-└── .version-lock               # Version compatibility record (v2+)
+├── .version-lock               # Version compatibility record (v2+)
+└── wireguard/                  # WireGuard configuration
+    ├── privatekey              # Client private key (keep secret!)
+    └── publickey               # Client public key (send to admin)
 ```
 
 **Shell profile modifications**:
@@ -71,6 +74,11 @@ client/
     alias claude-ollama='...'
     # <<< claude-ollama <<<
 ```
+
+**WireGuard configuration** (platform-specific):
+- macOS: Managed via WireGuard app or `wg-quick`
+- Configuration file generated during install
+- User imports into WireGuard app manually or via script
 
 ## No Compiled Code
 

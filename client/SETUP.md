@@ -59,14 +59,18 @@ For more details, see `client/specs/CLAUDE_CODE.md` lines 171-284.
 ## What the installer does
 
 The installer will:
-- Check/install Homebrew, Python, Tailscale
-- Open Tailscale for login and device approval
-- Prompt for server hostname (default: `ai-server`)
+- Check/install Homebrew, Python, WireGuard
+- Generate WireGuard keypair (client private key + public key)
+- Display public key for you to send to router admin
+- Wait for confirmation that you've been added as VPN peer
+- Prompt for VPN server configuration (server IP, server public key, endpoint)
+- Generate WireGuard configuration file
+- Prompt for server IP (default: `192.168.100.10`)
 - Create `~/.ai-client/env` with required environment variables
 - Update your shell profile (~/.zshrc) to source the environment
 - Install Aider via pipx (v1)
 - **[Optional, v2+]** Prompt for Claude Code + Ollama integration (creates `claude-ollama` alias)
-- Run a connectivity test
+- Run a connectivity test (after VPN connection)
 
 ## Post-Installation
 
@@ -82,14 +86,17 @@ Or simply open a new terminal window.
 
 ```bash
 # Check environment variables
-echo $OLLAMA_API_BASE          # http://ai-server:11434 (no /v1 suffix)
-echo $OPENAI_API_BASE          # http://ai-server:11434/v1
+echo $OLLAMA_API_BASE          # http://192.168.100.10:11434 (no /v1 suffix)
+echo $OPENAI_API_BASE          # http://192.168.100.10:11434/v1
 echo $OPENAI_API_KEY           # ollama
 
 # Check Aider
 aider --version
 
-# Test server connectivity (if server is running and you have access)
+# Check WireGuard configuration
+ls ~/.ai-client/wireguard/     # Should show privatekey and publickey files
+
+# Test server connectivity (requires VPN connection)
 curl $OLLAMA_API_BASE/v1/models
 ```
 
@@ -136,10 +143,10 @@ aider --model ollama/qwen3-coder    # specify model
 #### Check Configuration
 ```bash
 # Verify environment variables are set
-echo $OPENAI_API_BASE    # Should show: http://ai-server:11434/v1
+echo $OPENAI_API_BASE    # Should show: http://192.168.100.10:11434/v1
 echo $OPENAI_API_KEY     # Should show: ollama
 
-# Test connectivity (requires server access)
+# Test connectivity (requires VPN connection)
 curl $OPENAI_API_BASE/models
 ```
 
@@ -460,8 +467,8 @@ exec $SHELL
 
 **Verification**: Check that your environment variables are correct:
 ```bash
-echo $OLLAMA_API_BASE   # Should be http://remote-ollama-proxy:11434 (NO /v1)
-echo $OPENAI_API_BASE   # Should be http://remote-ollama-proxy:11434/v1 (WITH /v1)
+echo $OLLAMA_API_BASE   # Should be http://192.168.100.10:11434 (NO /v1)
+echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 ```
 
 ### "Connection refused" when testing connectivity
@@ -469,12 +476,12 @@ echo $OPENAI_API_BASE   # Should be http://remote-ollama-proxy:11434/v1 (WITH /v
 **Symptom**: `curl $OPENAI_API_BASE/models` fails with connection refused.
 
 **Solutions**:
-- Verify Tailscale is connected: `tailscale status` (should show "Connected")
-- Check you can resolve server hostname: `ping remote-ollama-proxy` (or your custom hostname)
-- Verify you're on the same Tailscale network as the server
-- Check Tailscale ACLs: you must have the appropriate tag or device access granted by the admin
+- Verify VPN connection is active: Check WireGuard tunnel status (method depends on client)
+- Check you can reach server DMZ IP: `ping 192.168.100.10`
+- Verify your VPN public key has been added to router by admin
+- Test if router firewall allows VPN → DMZ port 11434: ask admin to check firewall rules
 - Test if server is responding: ask server admin to verify `./scripts/test.sh` passes
-- Verify server hostname in `~/.ai-client/env` matches your Tailscale configuration
+- Verify server IP in `~/.ai-client/env` matches DMZ configuration (default: 192.168.100.10)
 
 ### Environment variables not set
 
@@ -523,16 +530,18 @@ echo $OPENAI_API_BASE   # Should be http://remote-ollama-proxy:11434/v1 (WITH /v
 - For tool calling: check if the specific model version supports function calling
 - The client is working correctly - this is a model capability limitation
 
-### Tailscale not connecting or staying connected
+### VPN not connecting or staying connected
 
-**Symptom**: `tailscale status` shows "Stopped" or connection drops frequently.
+**Symptom**: WireGuard VPN connection drops or fails to establish.
 
 **Solutions**:
-- Start Tailscale: Open the Tailscale app from Applications
-- Verify you're logged in: `tailscale status` should show your email and devices
-- Check for network issues: some corporate/public WiFi blocks VPNs
-- Try restarting Tailscale: Quit app completely and reopen
-- Re-authenticate if needed: `tailscale login` (may require browser)
+- Verify VPN client is installed: `which wg` or `brew list wireguard-tools`
+- Check WireGuard configuration file exists: `ls ~/.ai-client/wireguard/`
+- Verify your public key has been added to router: ask router admin to check VPN peers
+- Test VPN server endpoint is reachable: `ping <VPN_SERVER_PUBLIC_IP>`
+- Check VPN server public key is correct in your configuration
+- Some corporate/public WiFi networks block VPN ports (try different network)
+- Verify firewall isn't blocking WireGuard port (default: 51820 UDP)
 
 ### Claude Code not found (v2+)
 
@@ -568,7 +577,7 @@ echo $OPENAI_API_BASE   # Should be http://remote-ollama-proxy:11434/v1 (WITH /v
 
 **Exit code 1 (tool not found)**:
 - Install missing tool (Claude Code or check Ollama server)
-- Verify Tailscale connectivity to server
+- Verify VPN connectivity to server: `ping 192.168.100.10`
 
 **Exit code 2 (known incompatible versions)**:
 - Follow script's upgrade/downgrade recommendations

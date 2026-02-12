@@ -1,23 +1,24 @@
-# remote-ollama-proxy ai-server Repository Layout
+# remote-ollama-proxy ai-server Repository Layout (v2.0.0)
 
 ```
 server/
 ├── specs/                     # This folder — all markdown specifications
-│   ├── ARCHITECTURE.md        # Core principles and network topology
-│   ├── SECURITY.md            # Three-layer security model
+│   ├── ARCHITECTURE.md        # Core principles, two-layer architecture
+│   ├── SECURITY.md            # Two-layer security model (router + server)
 │   ├── FUNCTIONALITIES.md     # Core functionality and components
-│   ├── INTERFACES.md          # External interfaces (HAProxy + Ollama)
+│   ├── INTERFACES.md          # External interfaces (WireGuard + Ollama)
 │   ├── REQUIREMENTS.md        # Hardware and software requirements
 │   ├── SCRIPTS.md             # Script specifications
 │   ├── FILES.md               # This file
-│   ├── ANTHROPIC_COMPATIBILITY.md  # v2+ Anthropic API specification
-│   └── HARDENING_OPTIONS.md   # Future capability-mediation options
+│   ├── ANTHROPIC_COMPATIBILITY.md  # Anthropic API specification (Ollama 0.5.0+)
+│   └── HARDENING_OPTIONS.md   # Future hardening options
 ├── scripts/
-│   ├── install.sh             # One-time setup (Tailscale + Ollama + HAProxy)
+│   ├── install.sh             # One-time setup (network + Ollama)
 │   ├── uninstall.sh           # Remove server configuration
 │   ├── warm-models.sh         # Optional: pre-load models at boot
-│   └── test.sh                # Comprehensive tests (26+ tests)
-├── SETUP.md                   # Setup instructions
+│   └── test.sh                # Comprehensive tests (~25-30 tests)
+├── ROUTER_SETUP.md            # Complete OpenWrt router configuration guide
+├── SETUP.md                   # Server setup instructions
 └── README.md                  # Overview and quick start
 ```
 
@@ -31,56 +32,35 @@ server/
 - Location: `~/Library/LaunchAgents/com.ollama.plist`
 - Purpose: Configure Ollama as user-level service
 - Key settings:
-  - `OLLAMA_HOST=127.0.0.1` (loopback-only binding)
+  - `OLLAMA_HOST=192.168.100.10` (DMZ interface) or `0.0.0.0` (all interfaces)
   - `RunAtLoad=true` (auto-start on login)
   - `KeepAlive=true` (auto-restart on crash)
   - Logs: `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`
 
-**HAProxy Service:**
-- Location: `~/Library/LaunchAgents/com.haproxy.plist`
-- Purpose: Configure HAProxy as user-level service
-- Key settings:
-  - Config file: `~/.haproxy/haproxy.cfg`
-  - `RunAtLoad=true` (auto-start on login)
-  - `KeepAlive=true` (auto-restart on crash)
-  - Logs: `/tmp/haproxy.log` (if enabled)
+### Network Configuration
 
-### HAProxy Configuration
+**macOS Static IP:**
+- Configured via: `networksetup` command
+- Interface: Ethernet (or appropriate network interface)
+- IP: `192.168.100.10` (default, configurable)
+- Subnet: `255.255.255.0` (/24)
+- Router: `192.168.100.1`
+- DNS: Router or public DNS (configurable)
 
-**Config Directory:**
-- Location: `~/.haproxy/`
-- Created by: `install.sh`
-- Contents:
-  - `haproxy.cfg` - Main configuration file
-
-**Config File Structure:**
-```
-~/.haproxy/haproxy.cfg
-
-Contents:
-  - Global settings (minimal logging, daemon mode)
-  - Frontend: Listen on Tailscale interface (100.x.x.x:11434)
-  - Backend: Forward to Ollama (127.0.0.1:11434)
-  - Endpoint allowlist (path-based routing)
+**Verification:**
+```bash
+networksetup -getinfo "Ethernet"
 ```
 
-**Allowlisted Endpoints:**
+### Router Configuration
 
-OpenAI API:
-- `POST /v1/chat/completions`
-- `GET /v1/models`
-- `GET /v1/models/{model}`
-- `POST /v1/responses`
+**External to this repository** - See `ROUTER_SETUP.md`
 
-Anthropic API:
-- `POST /v1/messages`
-
-Ollama Native API (metadata only):
-- `GET /api/version`
-- `GET /api/tags`
-- `POST /api/show`
-
-All other paths blocked by default.
+**Key components:**
+- WireGuard VPN configuration on router
+- DMZ network configuration
+- Firewall rules (VPN → DMZ, DMZ → WAN, etc.)
+- Static DHCP lease or router-side static IP assignment
 
 ### Log Files
 
@@ -89,9 +69,10 @@ All other paths blocked by default.
 - Stderr: `/tmp/ollama.stderr.log`
 - Rotation: Manual (not managed by installer)
 
-**HAProxy:**
-- Access log: `/tmp/haproxy.log` (if enabled in config)
-- Rotation: Manual (not managed by installer)
+**Router** (external):
+- System log: `/var/log/messages` (on router)
+- Firewall log: `/var/log/firewall` (if enabled on router)
+- WireGuard log: `logread | grep wireguard` (on router)
 
 ---
 
@@ -101,7 +82,8 @@ All other paths blocked by default.
 ┌────────────────────────────────────────────┐
 │ Repository (server/)                       │
 │ ├── specs/*.md (documentation)             │
-│ └── scripts/*.sh (automation)              │
+│ ├── scripts/*.sh (automation)              │
+│ └── ROUTER_SETUP.md (router guide)         │
 └────────────────────────────────────────────┘
                   │
                   │ install.sh creates ↓
@@ -109,23 +91,30 @@ All other paths blocked by default.
 ┌────────────────────────────────────────────┐
 │ Runtime Configuration                      │
 │ ├── ~/Library/LaunchAgents/               │
-│ │   ├── com.ollama.plist                  │
-│ │   └── com.haproxy.plist                 │
-│ ├── ~/.haproxy/                            │
-│ │   └── haproxy.cfg                        │
+│ │   └── com.ollama.plist                  │
+│ ├── macOS Network Settings                │
+│ │   └── Static IP: 192.168.100.10         │
 │ └── /tmp/                                  │
 │     ├── ollama.stdout.log                  │
-│     ├── ollama.stderr.log                  │
-│     └── haproxy.log                        │
+│     └── ollama.stderr.log                  │
 └────────────────────────────────────────────┘
                   │
-                  │ LaunchAgents start ↓
+                  │ LaunchAgent starts ↓
                   ▼
 ┌────────────────────────────────────────────┐
-│ Running Services                           │
-│ ├── HAProxy (100.x.x.x:11434)             │
-│ │   ↓ forwards allowlisted endpoints      │
-│ └── Ollama (127.0.0.1:11434)               │
+│ Running Service                            │
+│ └── Ollama (192.168.100.10:11434)         │
+│     • Serves all API endpoints directly    │
+│     • No application-layer proxy          │
+└────────────────────────────────────────────┘
+                  ▲
+                  │ VPN clients connect via router
+                  │
+┌────────────────────────────────────────────┐
+│ Router (external to repo)                  │
+│ ├── WireGuard VPN config                   │
+│ ├── DMZ firewall rules                     │
+│ └── See ROUTER_SETUP.md                    │
 └────────────────────────────────────────────┘
 ```
 
@@ -133,50 +122,54 @@ All other paths blocked by default.
 
 ## Security Architecture (File and Network Layers)
 
-### Three-Layer Defense
+### Two-Layer Defense
 
-**Layer 1: Tailscale (Network)**
-- Managed: Tailscale admin console (external)
-- Controls: Device authorization to reach port 11434
+**Layer 1: Network Perimeter (Router)**
+- Config: OpenWrt UCI or LuCI (external to repository)
+- Controls: Who can reach server (VPN auth + firewall)
+- See: `ROUTER_SETUP.md`
 
-**Layer 2: HAProxy (Application)**
-- Config: `~/.haproxy/haproxy.cfg`
-- Controls: Which endpoints are forwarded
-
-**Layer 3: Ollama (OS Kernel)**
-- Config: `OLLAMA_HOST=127.0.0.1` in plist
-- Controls: Process network reachability (loopback-only)
+**Layer 2: Server (Ollama)**
+- Config: `OLLAMA_HOST` in plist + macOS network settings
+- Controls: Which interface Ollama binds to
+- Security: Relies on Layer 1 (network perimeter)
 
 ---
 
-## Dual API Support (v2+)
+## Dual API Support
 
 The server exposes both OpenAI-compatible and Anthropic-compatible APIs:
 
-**OpenAI API (v1)**:
+**OpenAI API:**
 - For Aider and OpenAI-compatible tools
 - Endpoints at `/v1/chat/completions`, `/v1/models`, etc.
-- Forwarded by HAProxy to Ollama
+- Served directly by Ollama (no proxy)
 
-**Anthropic API (v2+)**:
+**Anthropic API:**
 - For Claude Code and Anthropic-compatible tools
 - Endpoint at `/v1/messages`
 - Requires Ollama 0.5.0+
-- Forwarded by HAProxy to Ollama
+- Served directly by Ollama (no proxy)
 - See `ANTHROPIC_COMPATIBILITY.md` for details
 
-Both APIs served by the same Ollama process on port 11434, accessed through HAProxy.
+**Ollama Native API:**
+- All `/api/*` endpoints accessible to VPN clients
+- Includes potentially destructive operations (pull, delete, create)
+- See `INTERFACES.md` for complete endpoint list
+
+Both APIs served by the same Ollama process on port 11434. All endpoints accessible to VPN clients (no application-layer filtering).
 
 ---
 
 ## Configuration Files NOT Required
 
-The following are **not needed** for v1 baseline:
+The following are **not needed** for v2 baseline:
 
-- ❌ TLS certificates (Tailscale provides encryption)
-- ❌ Authentication config (network isolation sufficient)
-- ❌ Rate limit config (future expansion)
-- ❌ Logging config (optional, can be added to haproxy.cfg)
+- ❌ TLS certificates (WireGuard provides encryption)
+- ❌ Authentication config (VPN provides authentication)
+- ❌ Application proxy config (no HAProxy in v2)
+- ❌ Endpoint allowlist (firewall controls access, not application)
+- ❌ Rate limit config (can be added on router if needed)
 
 Minimal configuration keeps system simple and maintainable.
 
@@ -187,28 +180,42 @@ Minimal configuration keeps system simple and maintainable.
 ### Files Removed
 
 1. `~/Library/LaunchAgents/com.ollama.plist`
-2. `~/Library/LaunchAgents/com.haproxy.plist`
-3. `~/.haproxy/` directory (including haproxy.cfg)
-4. `/tmp/ollama.stdout.log`
-5. `/tmp/ollama.stderr.log`
-6. `/tmp/haproxy.log` (if exists)
+2. `/tmp/ollama.stdout.log`
+3. `/tmp/ollama.stderr.log`
+4. Optionally: macOS static IP configuration (reverted to DHCP if user confirms)
 
 ### Files Preserved
 
-- Homebrew binaries (`ollama`, `haproxy`, `tailscale`)
+- Homebrew binary (`ollama`)
 - Ollama models in `~/.ollama/models/` (valuable data)
-- Tailscale configuration (may be used for other purposes)
+- Router configuration (must be manually reverted if needed)
+
+### Router Cleanup (Manual)
+
+**Not handled by uninstall.sh** - must be done manually:
+
+1. Remove server's IP from DMZ firewall rules
+2. Optionally remove DMZ network configuration
+3. Remove VPN peer configurations (client public keys)
+4. See `ROUTER_SETUP.md` for reversal instructions
 
 ---
 
-## Future Expansion (Out of Scope for v1)
+## Future Expansion (Out of Scope for v2)
 
-The proxy architecture enables future config files **without re-architecture**:
+The architecture enables future config files **without re-architecture**:
 
-- `~/.haproxy/auth.conf` - Per-device credentials
-- `~/.haproxy/rate-limits.conf` - Request rate limits
-- `~/.haproxy/allowed-models.conf` - Model allowlist
-- `~/.haproxy/client-certs/` - mTLS certificates
+**On router** (network layer):
+- Connection rate limiting config
+- Per-peer bandwidth limits (QoS)
+- IDS/IPS configuration (Snort, Suricata)
+- WAF configuration (ModSecurity)
+
+**On server** (if adding application proxy):
+- `~/.reverse-proxy/config` - Optional reverse proxy (nginx, caddy)
+- Endpoint allowlisting (v1 HAProxy-style)
+- API key authentication
+- Model allowlists
 
 See `HARDENING_OPTIONS.md` for complete design space (not requirements, just options).
 
@@ -218,10 +225,22 @@ See `HARDENING_OPTIONS.md` for complete design space (not requirements, just opt
 
 File layout provides:
 
-> **Minimal configuration with maximum security**
+> **Minimal server configuration, maximum network control**
 
-- 2 LaunchAgent plists (Ollama + HAProxy)
-- 1 HAProxy config file (endpoint allowlist)
-- 3 log files (Ollama stdout/stderr + HAProxy)
+**Server-side:**
+- 1 LaunchAgent plist (Ollama only)
+- 1 network configuration (static IP)
+- 2 log files (Ollama stdout/stderr)
 - All managed by install.sh/uninstall.sh
+
+**Router-side** (external):
+- WireGuard VPN configuration
+- DMZ network configuration
+- Firewall rules
+- See `ROUTER_SETUP.md` for complete guide
+
+**Benefits:**
+- Simpler than v1 (no HAProxy)
+- Self-sovereign (no third-party VPN service)
 - Future-expandable without re-architecture
+- Clear separation of concerns (network vs server)

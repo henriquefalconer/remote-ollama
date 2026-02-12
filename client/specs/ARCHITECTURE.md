@@ -1,8 +1,9 @@
-# remote-ollama-proxy ai-client Architecture
+# remote-ollama-proxy ai-client Architecture (v2.0.0)
 
 ## Responsibilities of remote-ollama-proxy ai-client
 
-- Install and configure Tailscale membership
+- Install and configure WireGuard VPN client
+- Generate WireGuard keypair and send public key to admin
 - Create and source environment variables that exactly match the remote-ollama-proxy ai-server API contract (see API_CONTRACT.md)
 - Install and configure AI coding tools (Aider, optionally Claude Code)
 - Provide optional Ollama backend integration (alternative to Anthropic cloud API for Claude Code)
@@ -15,14 +16,15 @@
 
 - Guarantee the exact HTTP contract in API_CONTRACT.md
 - Support both OpenAI-compatible API (for Aider) and Anthropic-compatible API (for Claude Code)
-- Resolve the hostname `remote-ollama-proxy` via Tailscale
-- Accept connections only from authorized Tailscale tags
+- Be reachable at static DMZ IP (default: `192.168.100.10`)
+- Accept connections only from authorized VPN clients (WireGuard peers)
 
 ## Client Runtime
 
 - No daemon, no wrapper binary, no persistent process
-- Only environment configuration + tool installation
+- Only environment configuration + WireGuard VPN + tool installation
 - All API calls are performed by the user-chosen interface (Aider, Claude Code, or other compatible tools)
+- **VPN requirement**: WireGuard VPN must be connected to reach server
 
 ## Supported Interfaces
 

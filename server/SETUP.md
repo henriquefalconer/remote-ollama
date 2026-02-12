@@ -6,44 +6,52 @@ Target: Apple Silicon Mac (high memory recommended) running recent macOS
 
 - Administrative access
 - Homebrew package manager
-- Tailscale account (free personal tier sufficient)
+- OpenWrt router configured with WireGuard VPN (see [ROUTER_SETUP.md](ROUTER_SETUP.md))
+- Static IP configured on DMZ network (default: 192.168.100.10)
 
 ## Step-by-Step Setup
 
-### 1. Install Tailscale
+### 1. Configure OpenWrt Router
 
+**IMPORTANT**: Complete router configuration first before proceeding with server setup.
+
+See [ROUTER_SETUP.md](ROUTER_SETUP.md) for comprehensive OpenWrt + WireGuard VPN configuration instructions.
+
+Required router configuration:
+- OpenWrt 23.05 LTS or later installed
+- WireGuard VPN server configured on router
+- DMZ network created (192.168.100.0/24)
+- Firewall rules: VPN → DMZ port 11434 only
+- Static DHCP reservation for server (192.168.100.10)
+
+### 2. Configure Server Network
+
+Connect server to router via Ethernet on DMZ network.
+
+**Verify static IP assignment:**
 ```bash
-brew install tailscale
-open -a Tailscale          # complete login and device approval
+# Check current IP address
+ifconfig | grep 192.168.100
+
+# Should show: inet 192.168.100.10
 ```
 
-### 2. Install Ollama (if not already present)
+**If static IP not assigned by router DHCP:**
+Configure manually in System Settings → Network → Select interface → Details → TCP/IP → Configure IPv4: Manually
+- IP Address: 192.168.100.10
+- Subnet Mask: 255.255.255.0
+- Router: 192.168.100.1
+- DNS: 192.168.100.1 (or 1.1.1.1)
+
+### 3. Install Ollama
 
 ```bash
 brew install ollama
 ```
 
-### 3. Install HAProxy (Highly Recommended)
+### 4. Configure Ollama with DMZ Binding
 
-HAProxy provides a security proxy layer for endpoint allowlisting and kernel-enforced isolation.
-
-```bash
-brew install haproxy
-```
-
-**Benefits:**
-- Only allowlisted endpoints exposed (prevents accidental exposure)
-- Kernel-enforced isolation (Ollama unreachable from network)
-- Future-expandable (auth, rate limits can be added later)
-
-**Without proxy:**
-- Ollama directly exposed to Tailscale network
-- All Ollama endpoints reachable (including future ones)
-- Higher risk of accidental exposure
-
-### 4. Configure Ollama with loopback binding
-
-Create user-level launch agent with **loopback binding** (127.0.0.1):
+Create user-level launch agent with **DMZ interface binding** (192.168.100.10):
 
 ```bash
 mkdir -p ~/Library/LaunchAgents
@@ -62,7 +70,7 @@ cat > ~/Library/LaunchAgents/com.ollama.plist <<'EOF'
     <key>EnvironmentVariables</key>
     <dict>
         <key>OLLAMA_HOST</key>
-        <string>127.0.0.1</string>
+        <string>192.168.100.10</string>
     </dict>
     <key>KeepAlive</key>
     <true/>
@@ -79,170 +87,68 @@ EOF
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
 ```
 
-**Important:** `OLLAMA_HOST=127.0.0.1` binds Ollama to loopback only, making it unreachable from the network. HAProxy will provide remote access on the Tailscale interface.
+**Important:** `OLLAMA_HOST=192.168.100.10` binds Ollama to the DMZ interface. Router firewall controls access (VPN clients → port 11434 only).
 
-### 5. Configure HAProxy proxy
+**Alternative binding:** Use `OLLAMA_HOST=0.0.0.0` to listen on all interfaces (DMZ + localhost). Router firewall still controls external access.
 
-Create HAProxy configuration directory and config file:
-
-```bash
-mkdir -p ~/.haproxy
-
-# Get your Tailscale IP
-TAILSCALE_IP=$(tailscale ip -4)
-
-# Create HAProxy configuration
-cat > ~/.haproxy/haproxy.cfg <<EOF
-global
-    log /dev/log local0
-    maxconn 2000
-    daemon
-
-defaults
-    log global
-    mode http
-    option httplog
-    timeout connect 5s
-    timeout client 300s
-    timeout server 300s
-
-frontend ollama
-    bind ${TAILSCALE_IP}:11434
-
-    # Allowlisted endpoints
-    acl is_openai_chat path_beg /v1/chat/completions
-    acl is_openai_models path_beg /v1/models
-    acl is_openai_responses path_beg /v1/responses
-    acl is_anthropic_messages path_beg /v1/messages
-    acl is_ollama_version path /api/version
-    acl is_ollama_tags path /api/tags
-    acl is_ollama_show path /api/show
-
-    # Forward allowlisted endpoints
-    use_backend ollama if is_openai_chat
-    use_backend ollama if is_openai_models
-    use_backend ollama if is_openai_responses
-    use_backend ollama if is_anthropic_messages
-    use_backend ollama if is_ollama_version
-    use_backend ollama if is_ollama_tags
-    use_backend ollama if is_ollama_show
-
-    # Block everything else
-    default_backend blocked
-
-backend ollama
-    server ollama 127.0.0.1:11434 check
-
-backend blocked
-    http-request deny
-EOF
-
-echo "✓ HAProxy config created at ~/.haproxy/haproxy.cfg"
-echo "  Listening on: ${TAILSCALE_IP}:11434"
-echo "  Forwarding to: 127.0.0.1:11434"
-```
-
-### 6. Create HAProxy LaunchAgent
-
-```bash
-cat > ~/Library/LaunchAgents/com.haproxy.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.haproxy</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/opt/homebrew/bin/haproxy</string>
-        <string>-f</string>
-        <string>/Users/YOUR_USERNAME/.haproxy/haproxy.cfg</string>
-    </array>
-    <key>KeepAlive</key>
-    <true/>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/haproxy.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/haproxy.log</string>
-</dict>
-</plist>
-EOF
-
-# Replace YOUR_USERNAME with actual username
-sed -i '' "s/YOUR_USERNAME/$(whoami)/g" ~/Library/LaunchAgents/com.haproxy.plist
-
-# Load HAProxy service
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.haproxy.plist
-
-echo "✓ HAProxy LaunchAgent created and loaded"
-```
-
-### 7. Start services
+### 5. Start Ollama Service
 
 ```bash
 # Start Ollama
 launchctl kickstart gui/$(id -u)/com.ollama
 
-# Start HAProxy
-launchctl kickstart gui/$(id -u)/com.haproxy
-
-# Verify both services are running
+# Verify service is running
 launchctl list | grep com.ollama
-launchctl list | grep com.haproxy
+
+# Test local access on DMZ interface
+curl -sf http://192.168.100.10:11434/v1/models
 ```
 
-### 8. (Optional) Pre-pull large models for testing
+### 6. (Optional) Pre-pull Large Models
 
 ```bash
 ollama pull <model-name>   # repeat for desired models
 ```
 
-### 9. Configure Tailscale ACLs
+### 7. Add VPN Client Public Keys to Router
 
-In Tailscale admin console at tailscale.com:
-
-1. Assign a machine name e.g. "remote-ollama-proxy"
-2. Create tags e.g. tag:ai-client
-3. Add ACL rule example:
-
-```json
-{
-  "acls": [
-    {
-      "action": "accept",
-      "src": ["tag:ai-client"],
-      "dst": ["tag:ai-server:11434"]
-    }
-  ]
-}
-```
-
-### 10. Verify server reachability and security isolation
-
-#### Test 1: Verify Ollama loopback binding (from server)
+On the router (via SSH or LuCI web interface), add each VPN client's public key:
 
 ```bash
-# This should work (localhost = 127.0.0.1, bypasses HAProxy)
-curl -sf http://localhost:11434/v1/models
-echo "✓ Ollama accessible on loopback"
+# SSH to router
+ssh root@192.168.100.1
 
-# This should work (through HAProxy)
-curl -sf http://$(tailscale ip -4):11434/v1/models
-echo "✓ HAProxy forwarding works"
+# Add VPN peer (client)
+uci add wireguard wg0 peer
+uci set wireguard.@peer[-1].PublicKey='CLIENT_PUBLIC_KEY_HERE'
+uci set wireguard.@peer[-1].AllowedIPs='10.10.10.X/32'  # Assign VPN IP to this client
+uci set wireguard.@peer[-1].PersistentKeepalive='25'
+uci commit wireguard
+/etc/init.d/wireguard restart
+```
 
-# Verify Ollama is bound to loopback only
+See [ROUTER_SETUP.md](ROUTER_SETUP.md) for complete VPN peer management instructions.
+
+### 8. Verify Server Reachability
+
+#### Test 1: Verify Ollama DMZ binding (from server)
+
+```bash
+# Test local access on DMZ interface
+curl -sf http://192.168.100.10:11434/v1/models
+echo "✓ Ollama accessible on DMZ interface"
+
+# Verify Ollama is bound to DMZ IP or all interfaces
 lsof -i :11434 | grep LISTEN
-# Expected output: ollama should show 127.0.0.1:11434 (not 0.0.0.0)
+# Expected output: ollama should show 192.168.100.10:11434 (or 0.0.0.0:11434)
 ```
 
 #### Test 2: OpenAI-Compatible API (for Aider)
 
-From an authorized client machine:
+From a VPN-connected client machine:
 
 ```bash
-curl http://remote-ollama-proxy:11434/v1/chat/completions \
+curl http://192.168.100.10:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "any-available-model",
@@ -252,10 +158,10 @@ curl http://remote-ollama-proxy:11434/v1/chat/completions \
 
 #### Test 3: Anthropic-Compatible API (for Claude Code, requires Ollama 0.5.0+)
 
-From an authorized client machine:
+From a VPN-connected client machine:
 
 ```bash
-curl http://remote-ollama-proxy:11434/v1/messages \
+curl http://192.168.100.10:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: ollama" \
   -H "anthropic-version: 2023-06-01" \
@@ -289,7 +195,7 @@ curl http://remote-ollama-proxy:11434/v1/messages \
 **Test streaming (optional):**
 
 ```bash
-curl http://remote-ollama-proxy:11434/v1/messages \
+curl http://192.168.100.10:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: ollama" \
   -H "anthropic-version: 2023-06-01" \
@@ -307,26 +213,22 @@ This returns Server-Sent Events (SSE) with event types: `message_start`, `conten
 
 ## Server is now operational
 
-Clients must join the same tailnet and receive the appropriate tag to connect.
+VPN clients with authorized public keys configured on the router can connect. See [ROUTER_SETUP.md](ROUTER_SETUP.md) for managing VPN peers.
 
 ## Managing the Services
 
-Both HAProxy and Ollama run as user-level LaunchAgents and start automatically at login.
+Ollama runs as a user-level LaunchAgent and starts automatically at login.
 
 ### Check Status
 ```bash
-# Check if both services are loaded
-launchctl list | grep com.haproxy
+# Check if Ollama service is loaded
 launchctl list | grep com.ollama
 
-# Test API availability (through HAProxy)
-curl -sf http://localhost:11434/v1/models
-
-# Test from Tailscale IP (through HAProxy)
-curl -sf http://$(tailscale ip -4):11434/v1/models
+# Test API availability on DMZ interface
+curl -sf http://192.168.100.10:11434/v1/models
 
 # Test Anthropic API availability (Ollama 0.5.0+)
-curl -sf http://localhost:11434/v1/messages \
+curl -sf http://192.168.100.10:11434/v1/messages \
   -X POST \
   -H "Content-Type: application/json" \
   -H "x-api-key: test" \
@@ -336,54 +238,36 @@ curl -sf http://localhost:11434/v1/messages \
 
 ### Start Service
 ```bash
-# Start HAProxy
-launchctl kickstart gui/$(id -u)/com.haproxy
-
 # Start Ollama
 launchctl kickstart gui/$(id -u)/com.ollama
 ```
 
 ### Stop Service
 ```bash
-# Temporarily stop HAProxy (will restart on next login)
-launchctl stop gui/$(id -u)/com.haproxy
-
 # Temporarily stop Ollama (will restart on next login)
 launchctl stop gui/$(id -u)/com.ollama
 ```
 
 ### Restart Service
 ```bash
-# Kill and immediately restart HAProxy
-launchctl kickstart -k gui/$(id -u)/com.haproxy
-
 # Kill and immediately restart Ollama
 launchctl kickstart -k gui/$(id -u)/com.ollama
 ```
 
 ### Disable Service (Prevent Auto-Start)
 ```bash
-# Completely unload HAProxy
-launchctl bootout gui/$(id -u)/com.haproxy
-
 # Completely unload Ollama
 launchctl bootout gui/$(id -u)/com.ollama
 ```
 
 ### Re-enable Service
 ```bash
-# Load HAProxy again
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.haproxy.plist
-
 # Load Ollama again
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
 ```
 
 ### View Logs
 ```bash
-# Monitor HAProxy logs
-tail -f /tmp/haproxy.log
-
 # Monitor Ollama standard output
 tail -f /tmp/ollama.stdout.log
 
@@ -422,18 +306,6 @@ This step is optional but recommended if you want immediate response times after
 
 ## Troubleshooting
 
-### HAProxy Service Not Starting
-
-**Symptom**: `launchctl list | grep com.haproxy` shows nothing, or service won't load.
-
-**Solutions**:
-- Verify plist exists: `ls -l ~/Library/LaunchAgents/com.haproxy.plist`
-- Check plist syntax: `plutil -lint ~/Library/LaunchAgents/com.haproxy.plist`
-- Verify HAProxy config: `haproxy -c -f ~/.haproxy/haproxy.cfg`
-- Check if port 11434 is already in use: `lsof -i :11434`
-- Try manually loading: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.haproxy.plist`
-- Check logs for errors: `tail -20 /tmp/haproxy.log`
-
 ### Ollama Service Not Starting
 
 **Symptom**: `launchctl list | grep com.ollama` shows nothing, or service won't load.
@@ -458,20 +330,16 @@ This step is optional but recommended if you want immediate response times after
 
 ### API Not Responding
 
-**Symptom**: `curl http://localhost:11434/v1/models` times out or refuses connection.
+**Symptom**: `curl http://192.168.100.10:11434/v1/models` times out or refuses connection.
 
 **Solutions**:
-- Verify HAProxy is running: `launchctl list | grep com.haproxy` (should show PID in first column)
 - Verify Ollama is running: `launchctl list | grep com.ollama` (should show PID in first column)
-- Check if processes are actually running:
-  - `ps aux | grep "[h]aproxy"`
+- Check if Ollama process is actually running:
   - `ps aux | grep "[o]llama serve"`
-- Verify port bindings:
-  - `lsof -i :11434` should show both HAProxy (Tailscale IP) and Ollama (127.0.0.1)
-- Check environment variable in Ollama plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `127.0.0.1`)
-- Verify HAProxy config: `haproxy -c -f ~/.haproxy/haproxy.cfg`
+- Verify port binding:
+  - `lsof -i :11434` should show Ollama bound to 192.168.100.10 (or 0.0.0.0)
+- Check environment variable in Ollama plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.100.10` or `0.0.0.0`)
 - Review logs:
-  - `tail -50 /tmp/haproxy.log`
   - `tail -50 /tmp/ollama.stdout.log`
   - `tail -50 /tmp/ollama.stderr.log`
 
@@ -487,32 +355,32 @@ This step is optional but recommended if you want immediate response times after
 
 ### Client Cannot Connect
 
-**Symptom**: Client can reach Tailscale IP but gets connection refused on port 11434.
+**Symptom**: VPN client cannot reach server on 192.168.100.10:11434.
 
 **Solutions**:
-- Verify HAProxy is running and listening on Tailscale interface:
-  - `launchctl list | grep com.haproxy`
-  - `lsof -i :11434` should show HAProxy bound to your Tailscale IP
-- Verify Ollama is bound to loopback only:
-  - `lsof -i :11434 | grep ollama` should show `127.0.0.1:11434` (not `0.0.0.0`)
-  - Check plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `127.0.0.1`)
+- Verify VPN connection:
+  - Client should have active WireGuard tunnel
+  - Check client can ping DMZ server: `ping 192.168.100.10`
+- Verify Ollama is running and listening on DMZ interface:
+  - `launchctl list | grep com.ollama`
+  - `lsof -i :11434` should show Ollama bound to 192.168.100.10 (or 0.0.0.0)
+- Verify Ollama DMZ binding:
+  - `lsof -i :11434 | grep ollama` should show `192.168.100.10:11434` (or `*:11434`)
+  - Check plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.100.10` or `0.0.0.0`)
 - Test from server itself:
-  - Localhost (bypasses HAProxy): `curl http://localhost:11434/v1/models`
-  - Tailscale IP (through HAProxy): `curl http://$(tailscale ip -4):11434/v1/models`
-- If localhost works but Tailscale IP doesn't:
-  - HAProxy may not be running or configured correctly
-  - Check HAProxy config: `cat ~/.haproxy/haproxy.cfg`
-  - Verify bind address matches your Tailscale IP
-  - Check HAProxy logs: `tail -50 /tmp/haproxy.log`
-- Check Tailscale ACLs: client must have appropriate tag or device access
-- Verify no firewall blocking port 11434 (macOS firewall typically allows local binaries)
+  - DMZ interface: `curl http://192.168.100.10:11434/v1/models`
+- If server test works but client test doesn't:
+  - Router firewall may be blocking: Check [ROUTER_SETUP.md](ROUTER_SETUP.md) firewall rules
+  - Verify VPN → DMZ rule allows port 11434: `ssh root@192.168.100.1 "iptables -L FORWARD -v -n | grep 11434"`
+  - Check client's VPN peer is configured on router: `ssh root@192.168.100.1 "wg show wg0"`
+- Verify no macOS firewall blocking port 11434 (System Settings → Network → Firewall)
 
 ### Running the Test Suite
 
 If unsure about the state of your installation, run the comprehensive test suite:
 
 ```bash
-# Run all 34 tests (service status, security, network, OpenAI API, Anthropic API, HAProxy)
+# Run all 36 tests (service status, security, network configuration, OpenAI API, Anthropic API)
 ./scripts/test.sh
 
 # Skip Anthropic API tests (for Ollama < 0.5.0)
@@ -526,9 +394,11 @@ If unsure about the state of your installation, run the comprehensive test suite
 ```
 
 The test suite will identify specific issues with:
-- HAProxy and Ollama service status
-- Loopback binding and security isolation
-- HAProxy endpoint allowlisting
+- Ollama service status
+- DMZ interface binding and network configuration
+- Static IP configuration
 - OpenAI API endpoints
 - Anthropic API endpoints (if Ollama 0.5.0+)
-- Network binding configuration
+- Network isolation (DMZ vs LAN)
+
+**Note**: Router integration tests (firewall rules, VPN connectivity) are manual - see [ROUTER_SETUP.md](ROUTER_SETUP.md) verification section.

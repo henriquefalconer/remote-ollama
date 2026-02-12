@@ -19,16 +19,17 @@ The remote-ollama-proxy ai-client is a one-time installer that configures your m
 - **Performance analytics** tools for measuring tool usage (v2+)
 - **Version compatibility management** for Claude Code + Ollama (v2+)
 - Zero manual configuration per session
-- All API calls go through the secure Tailscale network
+- All API calls go through secure WireGuard VPN
 
 ## What the Client Does
 
-1. Installs and configures Tailscale membership
-2. Creates environment variables pointing to remote Ollama server
-3. Installs Aider with automatic Ollama connection (v1)
-4. Optionally configures Claude Code with remote Ollama backend (v2+)
-5. Provides analytics and version management tools (v2+)
-6. Provides clean uninstallation
+1. Installs and configures WireGuard VPN client
+2. Generates WireGuard keypair (sends public key to router admin)
+3. Creates environment variables pointing to remote Ollama server
+4. Installs Aider with automatic Ollama connection (v1)
+5. Optionally configures Claude Code with remote Ollama backend (v2+)
+6. Provides analytics and version management tools (v2+)
+7. Provides clean uninstallation
 
 ## Quick Reference
 
@@ -46,7 +47,7 @@ The remote-ollama-proxy ai-client is a one-time installer that configures your m
 | **Check config** | `echo $OPENAI_API_BASE` | Display OpenAI API base URL (for Aider) |
 | | `cat ~/.ai-client/env` | View all environment variables |
 | **Test connectivity** | `curl $OPENAI_API_BASE/models` | Test OpenAI API connection |
-| | `tailscale status` | Check Tailscale connection status |
+| | Check WireGuard status | Verify VPN tunnel is active (method depends on WireGuard client) |
 
 ### Testing
 
@@ -84,7 +85,7 @@ The remote-ollama-proxy ai-client is a one-time installer that configures your m
 - Support for both Anthropic cloud (default) and remote Ollama backend
 - Backend selection based on use case (cloud for complex tasks, Ollama for privacy-critical work)
 
-**Why this matters**: Some users may prefer running inference on their private Tailscale network for sensitive code. However, Anthropic cloud API remains the default and recommended option due to superior quality and performance (prompt caching support).
+**Why this matters**: Some users may prefer running inference on their private VPN network for sensitive code. However, Anthropic cloud API remains the default and recommended option due to superior quality and performance (prompt caching support).
 
 ### Performance Analytics
 
@@ -122,8 +123,8 @@ See [ANALYTICS_README.md](../ANALYTICS_README.md) for detailed analytics documen
 - macOS 14 Sonoma or later
 - Homebrew
 - Python 3.10+
-- Tailscale account
-- Access to a remote-ollama-proxy ai-server (must be invited to the same Tailscale network)
+- WireGuard client (installed via Homebrew)
+- Access to a remote-ollama-proxy ai-server (public key must be added to router's VPN configuration)
 
 ## Installation
 
@@ -140,9 +141,10 @@ The client relies on the exact API contract documented in [specs/API_CONTRACT.md
 
 The remote Ollama server provides:
 - OpenAI-compatible `/v1` endpoints (native Ollama feature)
-- Hostname resolution via Tailscale
+- Anthropic-compatible `/v1/messages` endpoint (Ollama 0.5.0+)
+- Static IP access via VPN (192.168.100.10:11434)
 - Support for streaming, JSON mode, tool calling
-- No authentication required (network-layer security)
+- No authentication required (VPN authentication provides security)
 
 ## Usage
 
@@ -163,7 +165,7 @@ Aider automatically reads the environment variables and connects to remote Ollam
 Any tool that supports custom OpenAI base URLs will work automatically:
 ```bash
 # Environment variables are already set
-echo $OPENAI_API_BASE    # http://ai-server:11434/v1
+echo $OPENAI_API_BASE    # http://192.168.100.10:11434/v1
 echo $OPENAI_API_KEY     # ollama
 ```
 
@@ -195,8 +197,8 @@ The client includes a comprehensive automated test suite that verifies installat
 
 The test suite validates:
 - **Environment Configuration** (7 tests): env file exists, all 4 variables set correctly, shell profile sourcing, variables exported
-- **Dependencies** (6 tests): Tailscale connected, Homebrew installed, Python 3.10+, pipx installed, Aider installed
-- **Connectivity** (6 tests): Server reachable, all API endpoints responding, error handling
+- **Dependencies** (6 tests): WireGuard installed, Homebrew installed, Python 3.10+, pipx installed, Aider installed
+- **Connectivity** (6 tests): VPN connection active, server reachable, all API endpoints responding, error handling
 - **API Contract** (5 tests): Base URL formats, HTTP status codes, response schemas, streaming with usage data
 - **Aider Integration** (3 tests): Binary in PATH, environment variables configured
 - **Script Behavior** (3 tests): Uninstall script available, valid syntax, install idempotency
@@ -209,23 +211,23 @@ Running 40 tests
 
 === Environment Configuration Tests ===
 ✓ PASS Environment file exists (~/.ai-client/env)
-✓ PASS OLLAMA_API_BASE is set: http://remote-ollama-proxy:11434
-✓ PASS OPENAI_API_BASE is set: http://remote-ollama-proxy:11434/v1
+✓ PASS OLLAMA_API_BASE is set: http://192.168.100.10:11434
+✓ PASS OPENAI_API_BASE is set: http://192.168.100.10:11434/v1
 ✓ PASS OPENAI_API_KEY is set correctly: ollama
 • SKIP AIDER_MODEL is not set (optional)
 ✓ PASS Shell profile sources env file (/Users/vm/.zshrc)
 ✓ PASS Environment variables are exported in env file
 
 === Dependency Tests ===
-✓ PASS Tailscale is installed
-✓ PASS Tailscale is connected (IP: 100.100.246.47)
+✓ PASS WireGuard is installed
 ✓ PASS Homebrew is installed
 ✓ PASS Python 3.14 found (>= 3.10)
 ✓ PASS pipx is installed
 ✓ PASS Aider is installed: aider 0.86.1
 
 === Connectivity Tests ===
-✓ PASS Server is reachable (remote-ollama-proxy)
+✓ PASS VPN connection is active
+✓ PASS Server is reachable (192.168.100.10)
 ✓ PASS GET /v1/models returns valid JSON (1 models)
 
 ...
@@ -253,8 +255,12 @@ This removes:
 - Aider installation
 - Environment variable configuration
 - Shell profile modifications
+- WireGuard configuration files
+- Client keypair (public/private keys)
 
-Tailscale and Homebrew are left untouched.
+**Important**: Ask router admin to remove your VPN peer (public key) from the router configuration.
+
+WireGuard client (Homebrew package) and Homebrew are left untouched.
 
 ## Documentation
 

@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-server API Contract (client view)
+# remote-ollama-proxy ai-server API Contract (v2.0.0) - Client View
 
 The remote-ollama-proxy ai-server exposes two API surfaces for different client tools:
 
@@ -7,27 +7,31 @@ The remote-ollama-proxy ai-server exposes two API surfaces for different client 
 
 Both APIs are served by the same Ollama server on port 11434.
 
+**Access**: VPN clients only (WireGuard VPN required)
+
 ---
 
-## OpenAI-Compatible API (v1)
+## OpenAI-Compatible API
 
-The remote-ollama-proxy ai-server exposes a strict subset of the OpenAI API at the following base URL:
+The remote-ollama-proxy ai-server exposes the OpenAI API at the following base URL:
 
 ## Base URL
 
-`http://remote-ollama-proxy:11434/v1`
+`http://192.168.100.10:11434/v1`
 
-- Hostname is fixed; resolved via Tailscale
+- IP address is static (default: 192.168.100.10, configurable)
 - Port is always 11434
+- Accessible only from VPN clients
 
 ## Authentication
 
 - `Authorization: Bearer <any-value>` or `api_key` parameter is required by SDKs but ignored by the server
 - Recommended dummy value: `ollama`
+- Security provided by network perimeter (router firewall + VPN authentication)
 
 ## Supported Endpoints
 
-All others return 404.
+**Note**: All Ollama endpoints are accessible to VPN clients (no application-layer filtering in v2).
 
 | Endpoint                     | Method | Key Capabilities (client can rely on)                          | Limitations (client must not assume) |
 |------------------------------|--------|----------------------------------------------------------------|--------------------------------------|
@@ -35,6 +39,12 @@ All others return 404.
 | `/v1/models`                 | GET    | Returns list of available models with id, created, owned_by   | created = last-modified timestamp only |
 | `/v1/models/{model}`         | GET    | Single model details                                           | Same as above |
 | `/v1/responses`              | POST   | Non-stateful responses, streaming, tools/function calling      | No previous_response_id or conversation support; requires Ollama 0.5.0+ (experimental) |
+
+**Ollama Native API** (also accessible):
+- `GET /api/version`, `GET /api/tags`, `POST /api/show` - Metadata (safe)
+- `POST /api/generate`, `POST /api/pull`, `DELETE /api/delete`, etc. - Native operations
+
+**Security note**: Clients can access all Ollama endpoints including potentially destructive operations. Use responsibly.
 
 ## Common Request Fields (guaranteed)
 
@@ -48,23 +58,31 @@ All others return 404.
 ## Environment Variables the client must set
 
 ```bash
-OLLAMA_API_BASE=http://remote-ollama-proxy:11434
-OPENAI_API_BASE=http://remote-ollama-proxy:11434/v1
+OLLAMA_API_BASE=http://192.168.100.10:11434
+OPENAI_API_BASE=http://192.168.100.10:11434/v1
 OPENAI_API_KEY=ollama
 AIDER_MODEL=ollama/<model-name>                       # optional
 ```
 
 **Rationale**:
-- `OLLAMA_API_BASE` (no `/v1` suffix): Used by Ollama-aware tools (like Aider/LiteLLM) for model metadata via Ollama's native `/api/show` endpoint. This endpoint exists on the server but is not part of the guaranteed API contract.
+- `OLLAMA_API_BASE` (no `/v1` suffix): Used by Ollama-aware tools (like Aider/LiteLLM) for model metadata via Ollama's native `/api/show` endpoint.
 - `OPENAI_API_BASE` (with `/v1` suffix): Used by OpenAI-compatible tools for chat completions. This is the primary supported interface.
-- `OPENAI_API_KEY`: Required by most SDKs/tools but ignored by server (Tailscale ACLs provide security).
+- `OPENAI_API_KEY`: Required by most SDKs/tools but ignored by server (VPN provides security).
 - `AIDER_MODEL`: Optional default model selection for Aider.
+
+**Network requirement**: Client must be connected to VPN to reach these endpoints.
 
 ## Error Behavior (client must handle)
 
-- 404 / connection refused → Tailscale not connected or server unreachable
-- 429 → server-side concurrency limit (rare)
-- 500 → inference error (model unloaded, OOM, etc.)
+- Connection refused → VPN not connected or server unreachable
+- Timeout → Server down or network issue
+- 429 → Server-side concurrency limit (rare)
+- 500 → Inference error (model unloaded, OOM, etc.)
+
+**Troubleshooting**:
+- Verify VPN connection: Check WireGuard tunnel status
+- Test connectivity: `ping 192.168.100.10`
+- Test port: `nc -zv 192.168.100.10 11434`
 
 ## This contract is the only API surface the client may depend on
 
@@ -72,22 +90,24 @@ Do not make assumptions about server internals, model availability, or features 
 
 ---
 
-## Anthropic-Compatible API (v2+)
+## Anthropic-Compatible API
 
 The remote-ollama-proxy ai-server also exposes Anthropic Messages API compatibility at:
 
 ### Base URL
 
-`http://remote-ollama-proxy:11434/v1/messages`
+`http://192.168.100.10:11434/v1/messages`
 
-- Same hostname and port as OpenAI API
+- Same IP and port as OpenAI API
 - Different endpoint path (`/v1/messages` vs `/v1/chat/completions`)
+- Accessible only from VPN clients
 
 ### Authentication
 
 - `x-api-key` header or `ANTHROPIC_API_KEY` environment variable required by SDKs but ignored by server
 - `anthropic-version` header accepted but not validated
 - Recommended dummy value for API key: `ollama`
+- Security provided by network perimeter (router firewall + VPN authentication)
 
 ### Supported Endpoints
 
@@ -150,18 +170,20 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
-export ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434
+export ANTHROPIC_BASE_URL=http://192.168.100.10:11434
 ```
 
 **Shell alias for easy switching:**
 ```bash
 # Recommended: alias for local backend
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://remote-ollama-proxy:11434 claude --dangerously-skip-permissions'
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.100.10:11434 claude --dangerously-skip-permissions'
 
 # Usage:
 claude --model opus-4-6        # Uses Anthropic cloud
-claude-ollama --model qwen3-coder  # Uses local Ollama
+claude-ollama --model qwen3-coder  # Uses local Ollama (requires VPN)
 ```
+
+**Network requirement**: VPN must be connected to use local Ollama backend.
 
 ### Differences from Real Anthropic API
 
@@ -229,9 +251,15 @@ Ollama's Anthropic compatibility is relatively new and may diverge from Anthropi
 
 ### Error Behavior (client must handle)
 
-- 404 / connection refused → Tailscale not connected or server unreachable
+- Connection refused → VPN not connected or server unreachable
+- Timeout → Server down or network issue
 - 500 → Inference error (model unloaded, OOM, unsupported feature)
 - Tool use errors → Model may fail to generate proper tool calls (quality issue)
+
+**Troubleshooting**:
+- Verify VPN connection: Check WireGuard tunnel status
+- Test connectivity: `ping 192.168.100.10`
+- Test port: `nc -zv 192.168.100.10 11434`
 
 ### This contract is the only API surface the client may depend on
 
@@ -241,3 +269,4 @@ Do not make assumptions about:
 - Undocumented features
 - Future API compatibility
 - Performance characteristics (measure empirically)
+- Network topology (VPN configuration may vary)

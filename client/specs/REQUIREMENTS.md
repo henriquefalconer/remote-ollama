@@ -1,4 +1,4 @@
-# remote-ollama-proxy ai-client Requirements
+# remote-ollama-proxy ai-client Requirements (v2.0.0)
 
 ## macOS
 
@@ -9,11 +9,19 @@
 
 - Homebrew
 - Python 3.10+ (installed via Homebrew if missing)
-- Tailscale (GUI app; installer opens it for login)
+- **WireGuard client** (installed via Homebrew)
 
 ## No sudo required
 
-Except for Homebrew/Tailscale installation if chosen by user.
+Except for:
+- Homebrew/WireGuard installation if chosen by user
+- WireGuard VPN connection (may require elevated privileges depending on installation method)
+
+## VPN Configuration
+
+- **WireGuard keypair**: Generated during installation (client keeps private key)
+- **Router admin step**: User must send public key to router admin to be added as VPN peer
+- **VPN connection**: Required to access server (can be connected/disconnected as needed)
 
 ## Shell Profile Modification
 
@@ -21,3 +29,4 @@ The installer will modify your shell profile (`~/.zshrc` for zsh or `~/.bashrc` 
 - Requires explicit user consent during installation
 - Uses marker comments for clean removal by uninstaller
 - Ensures environment variables are available in all new shell sessions
+- Optionally adds `claude-ollama` alias for easy backend switching (v2+)

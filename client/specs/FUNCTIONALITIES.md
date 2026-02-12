@@ -1,8 +1,10 @@
-# remote-ollama-proxy ai-client Functionalities
+# remote-ollama-proxy ai-client Functionalities (v2.0.0)
 
 ## Core Functionality (v1 - Aider)
 
 - One-time installer that makes remote Ollama immediately usable by OpenAI-compatible tools
+- Installs and configures WireGuard VPN client
+- Generates WireGuard keypair (client keeps private key, sends public key to admin)
 - Sets all required environment variables pointing to remote Ollama server (see API_CONTRACT.md)
 - Modifies shell profile (`~/.zshrc` or `~/.bashrc`) to source environment file automatically (with user consent)
 - Installs Aider and ensures it connects to remote Ollama automatically
@@ -47,21 +49,24 @@
 
 ### With Aider (v1)
 
+- **Connect to VPN**: Establish WireGuard connection
 - User can run `aider` or `aider --yes` and it will connect to remote Ollama
 - Any other tool that honors `OPENAI_API_BASE` + `OPENAI_API_KEY` will work without extra flags
 
 ### With Claude Code (v2+)
 
-- **Default behavior**: Claude Code uses Anthropic cloud API (high quality, full features)
-- **Optional Ollama backend**: Run `claude-ollama --model qwen3-coder` to use local server
+- **Connect to VPN**: Establish WireGuard connection (required for Ollama backend)
+- **Default behavior**: Claude Code uses Anthropic cloud API (high quality, full features, no VPN needed)
+- **Optional Ollama backend**: Run `claude-ollama --model qwen3-coder` to use local server (requires VPN)
 - **Ralph loops**: Run `./loop.sh` (cloud) or `./loop-with-analytics.sh` (cloud + analytics)
 - **Analytics**: Use `loop-with-analytics.sh` to measure actual performance characteristics
 
 ### Runtime Characteristics
 
-- **No persistent daemon or service** – the client is purely environment configuration
-- No start/stop/restart commands needed – simply invoke tools when needed
+- **No persistent daemon or service** – the client is WireGuard VPN + environment configuration
+- VPN connection required to reach server
 - Backend selection via environment variables or shell alias
+- VPN can be connected/disconnected as needed
 
 ## Client Responsibilities
 

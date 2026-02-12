@@ -10,21 +10,21 @@ It's a design space—a menu of orthogonal controls you can draw from later as n
 
 ---
 
-## Base Architecture (v1 Baseline)
+## Base Architecture (v2 Baseline)
 
-The current three-layer architecture provides:
+The current two-layer architecture provides:
 
 ```
-Layer 1: Tailscale → Controls WHO can reach the server
-Layer 2: HAProxy → Controls WHAT they can access (endpoint allowlist)
-Layer 3: Loopback → Controls WHAT can physically arrive (kernel-enforced)
+Layer 1: Network Perimeter (Router + VPN + DMZ + Firewall) → Controls WHO can reach the server and WHAT networks can communicate
+Layer 2: AI Server (Ollama on DMZ) → Provides inference services
 ```
 
 This baseline provides:
-- ✅ Intentional exposure (only allowlisted endpoints)
-- ✅ Kernel-enforced isolation (loopback binding)
-- ✅ Network-layer authorization (Tailscale ACLs)
-- ✅ Single choke point for future controls (HAProxy)
+- ✅ Network perimeter security (OpenWrt firewall rules)
+- ✅ VPN authentication (WireGuard per-peer public keys)
+- ✅ DMZ isolation (separated from LAN, controlled access from VPN)
+- ✅ Self-sovereign infrastructure (no third-party VPN services)
+- ✅ Direct Ollama API exposure (all endpoints accessible to authorized VPN clients)
 
 **The following options build on top of this foundation.**
 
@@ -34,86 +34,98 @@ This baseline provides:
 
 These controls act **before** a request reaches Ollama.
 
-### A1. Endpoint Allowlisting
+### A1. Endpoint Allowlisting (Application Layer Proxy)
 
-**Status**: ✅ Already implemented (HAProxy config)
+**Status**: ❌ NOT implemented in v2 (architectural trade-off)
 
-Current allowlist:
-- `POST /v1/chat/completions`
-- `GET /v1/models`
-- `GET /v1/models/{model}`
-- `POST /v1/responses`
-- `POST /v1/messages`
-- `GET /api/version`
-- `GET /api/tags`
-- `POST /api/show`
+**v1 approach**: HAProxy mediated access at application layer (endpoint allowlist)
+**v2 approach**: Direct Ollama API exposure to VPN clients (all endpoints accessible)
 
-All other paths blocked by default.
+**Why removed**:
+- Simplified architecture (two layers instead of three)
+- Lower maintenance burden (no HAProxy configuration)
+- Ollama endpoints are designed for authorized client access
+- DMZ isolation + VPN authentication provides network-level security
 
-### A2. Method Allowlisting
+**If endpoint allowlisting becomes necessary**:
+- **Option 1**: Add nginx/HAProxy reverse proxy between VPN and Ollama
+- **Option 2**: Use OpenWrt Layer 7 packet inspection (complex, limited)
+- **Option 3**: Implement application-level firewall (iptables string matching - fragile)
 
-**Capability**: Restrict HTTP methods to known-safe subset
+**Trade-off**: v2 prioritizes simplicity over granular endpoint control.
 
-**Implementation**: HAProxy ACL rules
-```haproxy
-acl is_safe_method method GET POST
-http-request deny unless is_safe_method
+### A2. Port-Level Firewall Rules
+
+**Capability**: Restrict traffic to specific port (11434) from specific source (VPN)
+
+**Implementation**: OpenWrt firewall rules (already part of base v2 architecture)
+```bash
+# VPN → DMZ port 11434 only
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-VPN-to-Ollama'
+uci set firewall.@rule[-1].src='vpn'
+uci set firewall.@rule[-1].dest='dmz'
+uci set firewall.@rule[-1].dest_ip='192.168.100.10'
+uci set firewall.@rule[-1].dest_port='11434'
+uci set firewall.@rule[-1].proto='tcp'
+uci set firewall.@rule[-1].target='ACCEPT'
 ```
 
 **Mitigates**:
-- Weird HTTP verb attacks (PUT, DELETE, PATCH, etc.)
-- HTTP verb tampering
-- Edge case vulnerabilities
+- Access to non-Ollama services on DMZ server
+- Port scanning attacks
+- Lateral movement within DMZ
 
-**Cost**: None (negligible performance impact)
+**Cost**: None (iptables rule matching)
 
-**Complexity**: Low (2-line config change)
+**Complexity**: Low (standard firewall configuration)
 
-### A3. Request Size Caps
+### A3. Connection State Tracking
 
-**Capability**: Limit maximum request size to prevent resource exhaustion
+**Capability**: Only allow established/related connections, drop invalid packets
 
-**Implementation**: HAProxy config
-```haproxy
-# Max headers
-tune.http.maxhdr 100
-
-# Max request body (e.g., 100MB for images/contexts)
-http-request deny if { req.body_size gt 104857600 }
+**Implementation**: OpenWrt firewall (default behavior)
+```bash
+# Only allow established/related connections
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -m state --state INVALID -j DROP
 ```
 
 **Mitigates**:
-- Memory pressure from giant contexts
-- Disk filling from massive image uploads
-- Pathological payloads
+- TCP hijacking
+- Invalid packet injection
+- Out-of-sequence attacks
+
+**Cost**: Minimal (connection tracking overhead)
+
+**Complexity**: Low (standard iptables)
+
+### A4. Rate Limiting (Connection-Level)
+
+**Capability**: Limit new connections per second from VPN clients
+
+**Implementation**: OpenWrt iptables with recent module
+```bash
+# Limit new connections to 20/minute from single VPN client
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m recent --name vpn_connlimit --set
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m recent --name vpn_connlimit --update --seconds 60 --hitcount 20 \
+    -j DROP
+```
+
+**Mitigates**:
+- Connection flood attacks
+- Buggy client creating excessive connections
+- Resource exhaustion
 
 **Trade-offs**:
-- May need adjustment for legitimate large contexts
-- Vision models with many images may hit limits
+- Legitimate high-frequency clients may be throttled
+- Requires tuning based on usage patterns
 
-**Cost**: None (actually prevents resource waste)
+**Cost**: Minimal (kernel module)
 
-**Complexity**: Low (config tuning)
-
-### A4. Path Sanitization
-
-**Capability**: Block requests with suspicious path patterns
-
-**Implementation**: HAProxy ACL rules
-```haproxy
-acl has_path_traversal path_reg \\.\\./
-acl has_null_bytes path_reg \\x00
-http-request deny if has_path_traversal || has_null_bytes
-```
-
-**Mitigates**:
-- Path traversal attempts
-- Null byte injection
-- URL encoding attacks
-
-**Cost**: None
-
-**Complexity**: Low
+**Complexity**: Medium (iptables recent module)
 
 ---
 
@@ -121,21 +133,21 @@ http-request deny if has_path_traversal || has_null_bytes
 
 These controls regulate **how much** inference can happen.
 
-### B1. Concurrency Limits
+### B1. Concurrency Limits (Connection-Level)
 
-**Capability**: Cap maximum simultaneous requests
+**Capability**: Cap maximum simultaneous TCP connections
 
-**Implementation**: HAProxy config
-```haproxy
-backend ollama
-    maxconn 10  # Global limit
-```
+**Implementation**: OpenWrt iptables connlimit module
+```bash
+# Global limit: max 10 concurrent connections to Ollama
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m connlimit --connlimit-above 10 --connlimit-mask 0 \
+    -j REJECT --reject-with tcp-reset
 
-For per-client limits:
-```haproxy
-stick-table type ip size 100k expire 30s store conn_cur
-acl too_many_conns src_conn_cur gt 3
-http-request deny if too_many_conns
+# Per-client limit: max 3 concurrent connections per VPN client
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m connlimit --connlimit-above 3 --connlimit-mask 32 \
+    -j REJECT --reject-with tcp-reset
 ```
 
 **Mitigates**:
@@ -144,170 +156,184 @@ http-request deny if too_many_conns
 - Resource exhaustion
 
 **Trade-offs**:
+- Limits concurrent connections, not HTTP requests (streaming uses 1 connection)
 - May need tuning based on actual usage patterns
-- Single client limited even if server idle
+- Ollama has internal queuing, this adds network-level gate
 
-**Cost**: Minimal (just queue management)
+**Cost**: Minimal (connection tracking)
 
-**Complexity**: Low to Medium (depending on per-client vs global)
+**Complexity**: Medium (iptables connlimit module)
 
-### B2. Time Limits (Request Timeout)
+### B2. Connection Timeouts (TCP-Level)
 
-**Capability**: Kill hung requests after timeout
+**Capability**: Kill idle connections after timeout
 
-**Implementation**: HAProxy config
-```haproxy
-timeout client 300s  # 5 minutes max
-timeout server 300s
+**Implementation**: OpenWrt firewall timeout settings
+```bash
+# TCP connection timeout (default 432000s = 5 days)
+sysctl net.netfilter.nf_conntrack_tcp_timeout_established=3600  # 1 hour
+
+# Or via iptables for specific connections
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m state --state ESTABLISHED \
+    -m conntrack --ctstate ESTABLISHED --ctexpire 3600 \
+    -j ACCEPT
 ```
 
 **Mitigates**:
-- Zombie generations (model stuck, never completes)
+- Zombie connections (client disconnects without FIN)
 - Resource leaks from abandoned connections
-- Streaming requests that never close
+- Connection table exhaustion
 
 **Trade-offs**:
-- Large models may legitimately take minutes
-- May need longer timeouts for batch generations
+- Streaming requests may be long-lived (minutes to hours)
+- Need longer timeouts for legitimate use cases
+- TCP-level timeout doesn't kill Ollama process (just drops connection)
 
 **Cost**: None (prevents resource waste)
 
-**Complexity**: Low
+**Complexity**: Low to Medium (sysctl or iptables)
 
-### B3. Model Allowlists
+### B3. Model Allowlists (Application-Level)
 
 **Capability**: Restrict which models clients can load
 
-**Implementation**: HAProxy Lua script or custom validation
-```lua
--- Check if requested model is in allowlist
-allowedModels = {
-  ["qwen3-coder"] = true,
-  ["glm-4.7:cloud"] = true,
-  ["llama3.2"] = true
-}
+**Status**: ❌ Not available without application-layer proxy
 
--- Extract model from request body, check allowlist
+**v2 limitation**: Direct Ollama API exposure means clients can request any model
+
+**Mitigation options**:
+- **Option 1**: Pre-pull only desired models (`ollama pull qwen3-coder`), remove others
+- **Option 2**: Ollama doesn't support model allowlists natively (as of 0.5.x)
+- **Option 3**: Add reverse proxy (nginx/HAProxy) with request body inspection
+- **Option 4**: Modify Ollama source code (maintenance burden)
+
+**Trade-off**: v2 trusts authorized VPN clients not to abuse model selection
+
+**Recommendation**: Use operational controls (disk quotas, monitoring) instead of technical enforcement
+
+### B4. Packet-Based Rate Limiting
+
+**Capability**: Cap packets per second from VPN clients
+
+**Implementation**: OpenWrt iptables limit module
+```bash
+# Limit packets to 100/second from single VPN client
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m limit --limit 100/sec --limit-burst 200 \
+    -j ACCEPT
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -j DROP
 ```
 
 **Mitigates**:
-- Accidental loading of huge models (OOM risk)
-- Loading experimental/untrusted weights
-- Resource exhaustion from model thrashing
+- Packet flood attacks
+- High-frequency request patterns
+- Network-level resource exhaustion
 
 **Trade-offs**:
-- Requires maintaining allowlist
-- Reduces flexibility (can't quickly try new models)
-
-**Cost**: Low (validation overhead minimal)
-
-**Complexity**: Medium (requires Lua scripting or external validation)
-
-### B4. Rate Limiting (Requests per Time Window)
-
-**Capability**: Cap requests per client per time period
-
-**Implementation**: HAProxy stick tables
-```haproxy
-stick-table type ip size 100k expire 60s store http_req_rate(60s)
-acl is_rate_limited src_http_req_rate gt 100
-http-request deny if is_rate_limited
-```
-
-**Mitigates**:
-- Abuse (excessive requests)
-- Accidental loops (buggy client)
-- Resource exhaustion
-
-**Trade-offs**:
-- Legitimate heavy users may hit limits
+- Packet-based limiting is coarse (doesn't distinguish HTTP requests)
+- Legitimate streaming may send many packets
 - Needs tuning based on workload
 
-**Cost**: Minimal (table lookups)
+**Cost**: Minimal (packet counting)
 
-**Complexity**: Medium
+**Complexity**: Low (iptables limit module)
 
 ---
 
 ## C. Identity-Aware Mediation
 
-These controls tie actions to device identity.
+These controls tie actions to VPN client identity.
 
-### C1. Per-Device Static Tokens
+### C1. WireGuard Peer Identity (Built-In)
 
-**Capability**: Require static API key per client device
+**Capability**: Per-peer public key authentication
 
-**Implementation**: HAProxy header validation + stick table
-```haproxy
-# Define valid tokens (or load from file)
-acl valid_token hdr(X-API-Key) -m str -f /etc/haproxy/tokens.txt
-http-request deny unless valid_token
+**Status**: ✅ Already implemented (WireGuard VPN architecture)
 
-# Map token to device for attribution
-stick-table type string len 64 size 10k expire 24h store ...
+**Implementation**: OpenWrt WireGuard peer configuration
+```bash
+# Each VPN client identified by unique public key
+uci add wireguard wg0 peer
+uci set wireguard.@peer[-1].PublicKey='CLIENT_PUBLIC_KEY'
+uci set wireguard.@peer[-1].AllowedIPs='10.10.10.X/32'
+uci set wireguard.@peer[-1].PersistentKeepalive='25'
 ```
 
 **Provides**:
-- Per-device attribution (know who did what)
-- Revocation capability (remove token)
-- Differentiated access (different tokens, different limits)
+- Cryptographic identity (private key proof)
+- Per-peer IP assignment (10.10.10.X)
+- Attribution (firewall logs show source IP = specific peer)
+- Revocation (remove peer from config)
 
-**Trade-offs**:
-- Requires token management (distribution, rotation)
-- Adds operational complexity
-- Tokens can leak (not cryptographically strong)
+**Cost**: None (WireGuard built-in)
 
-**Cost**: Low (header validation)
+**Complexity**: Low (standard WireGuard configuration)
 
-**Complexity**: Medium (token management overhead)
+### C2. Per-Peer Firewall Rules
 
-### C2. mTLS Client Certificates
+**Capability**: Different access rules for different VPN clients
 
-**Capability**: Cryptographically strong client authentication
+**Implementation**: OpenWrt iptables rules based on source IP
+```bash
+# Allow only specific VPN client (10.10.10.5) to access Ollama
+iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
 
-**Implementation**: HAProxy TLS frontend + client cert validation
-```haproxy
-frontend https
-    bind *:11434 ssl crt /etc/haproxy/server.pem ca-file /etc/haproxy/ca.pem verify required
+# Different rate limits for different clients
+iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m limit --limit 50/sec -j ACCEPT  # Lower limit for this client
+
+# Block specific client
+iptables -A FORWARD -s 10.10.10.99 -i wg0 -o br-dmz -p tcp --dport 11434 -j DROP
 ```
 
 **Provides**:
-- Strong authentication (private key required)
-- Tamper-proof identity (certificate validation)
-- Integration with Tailscale device identity
+- Differentiated access (trusted vs untrusted clients)
+- Selective revocation (block misbehaving client)
+- Priority tiers (higher limits for important clients)
 
 **Trade-offs**:
-- High operational complexity (PKI management)
-- Certificate distribution and renewal overhead
-- Adds TLS termination (latency, though minimal)
+- Requires maintaining per-client rules
+- IP-based (relies on static VPN IP assignments)
+- More complex firewall configuration
 
-**Cost**: Low latency (~1-2ms TLS handshake once per connection)
+**Cost**: Minimal (iptables rule matching)
 
-**Complexity**: High (certificate authority, renewal automation)
+**Complexity**: Medium (per-client rule management)
 
-### C3. Tailscale Identity Integration
+### C3. mTLS Client Certificates (Additional Layer)
 
-**Capability**: Extract Tailscale device identity from connection
+**Capability**: Double authentication (VPN + TLS certificates)
 
-**Implementation**: Custom HAProxy Lua script + Tailscale API
-```lua
--- Query Tailscale API to map source IP to device
--- Use device tags for authorization decisions
+**Implementation**: nginx/HAProxy reverse proxy with client cert validation
+```nginx
+server {
+    listen 192.168.100.10:11434 ssl;
+    ssl_client_certificate /etc/nginx/ca.pem;
+    ssl_verify_client on;
+
+    location / {
+        proxy_pass http://127.0.0.1:11435;  # Ollama on different port
+    }
+}
 ```
 
 **Provides**:
-- Seamless integration with existing Tailscale ACLs
-- No additional secrets to manage
-- Centralized identity source
+- Defense in depth (VPN compromised, TLS still protects)
+- Application-level identity (separate from network identity)
+- Fine-grained access control (certificate attributes)
 
 **Trade-offs**:
-- Requires Tailscale API calls (latency)
-- Depends on external service (Tailscale)
-- Complex implementation
+- Very high operational complexity (PKI + cert distribution + renewal)
+- Adds reverse proxy layer (moves back toward v1 complexity)
+- Certificate management overhead
 
-**Cost**: Medium (API call latency per new connection)
+**Cost**: Low latency (~1-2ms TLS handshake per connection)
 
-**Complexity**: High (API integration, caching)
+**Complexity**: Very High (PKI management, reverse proxy configuration)
+
+**Recommendation**: Only if defense-in-depth is critical (e.g., untrusted network between VPN and server)
 
 ---
 
@@ -315,89 +341,121 @@ frontend https
 
 These controls provide visibility without restricting access.
 
-### D1. Structured Access Logs
+### D1. Firewall Connection Logs
 
-**Capability**: Log all requests with attribution
+**Capability**: Log all connections to Ollama with VPN client attribution
 
-**Implementation**: HAProxy log format
-```haproxy
-log-format "%ci:%cp [%tr] %ft %b/%s %TR/%Tw/%Tc/%Tr/%Ta %ST %B %CC %CS %tsc %ac/%fc/%bc/%sc/%rc %sq/%bq %hr %hs %{+Q}r"
+**Implementation**: OpenWrt firewall logging
+```bash
+# Log accepted connections to Ollama
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -j LOG --log-prefix "OLLAMA_ACCESS: " --log-level 6
+
+# Then allow
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
 ```
 
 **Captures**:
-- Client IP (Tailscale device)
+- Source IP (VPN client: 10.10.10.X)
+- Destination IP (Ollama: 192.168.100.10)
 - Timestamp
-- Endpoint accessed
-- Response status
-- Latency breakdown
-- Request/response sizes
+- TCP connection establishment
 
 **Provides**:
-- Usage patterns (who uses what, when)
-- Performance insights (latency, throughput)
+- Usage attribution (which VPN client accessed Ollama)
+- Connection patterns (frequency, timing)
 - Security auditing (detect anomalies)
 
 **Trade-offs**:
-- Log storage (grows over time)
-- Privacy implications (tracks all usage)
-- Log rotation required
+- Connection-level logging (not HTTP request/response details)
+- Log storage (grows over time, requires rotation)
+- Performance impact if high traffic
 
-**Cost**: Low (write-only, no blocking)
+**Cost**: Low (kernel logging)
 
-**Complexity**: Low (HAProxy built-in)
+**Complexity**: Low (iptables LOG target)
 
-### D2. Metrics Export
+**Log location**: `/var/log/kern.log` or OpenWrt `logread`
 
-**Capability**: Expose metrics for monitoring systems
+### D2. Ollama Access Logs (Application-Level)
 
-**Implementation**: HAProxy stats socket
-```haproxy
-stats socket /run/haproxy/admin.sock mode 660 level admin
-stats timeout 30s
-```
+**Capability**: Log HTTP requests to Ollama API
 
-Query via:
+**Status**: ⚠️ Limited (Ollama logging not configurable as of 0.5.x)
+
+**Current behavior**: Ollama logs to launchd stderr/stdout
+- Location: `/tmp/com.ollama.stderr.log` (macOS)
+- Content: Model loading, generation errors, API version
+- Format: Not structured (plain text)
+
+**Enhancement options**:
+- **Option 1**: Reverse proxy (nginx/HAProxy) with access logs
+- **Option 2**: Modify Ollama source to add structured logging
+- **Option 3**: Network packet capture (tcpdump on DMZ interface)
+- **Option 4**: Wait for Ollama to add configurable logging
+
+**Recommendation**: Use firewall connection logs (D1) for attribution, Ollama logs for debugging
+
+### D3. Network Traffic Monitoring
+
+**Capability**: Monitor bandwidth and connection patterns
+
+**Implementation**: OpenWrt traffic monitoring tools
 ```bash
-echo "show stat" | socat stdio /run/haproxy/admin.sock
+# Install monitoring packages
+opkg update
+opkg install iftop bwm-ng tcpdump
+
+# Monitor VPN → DMZ traffic
+iftop -i wg0
+
+# Capture packets for analysis
+tcpdump -i br-dmz -w /tmp/ollama-traffic.pcap port 11434
 ```
 
 **Metrics available**:
-- Request rates
-- Response times (percentiles)
-- Error rates
-- Concurrent connections
-- Backend health
+- Bandwidth usage (MB/s per VPN client)
+- Connection counts (active, total)
+- Packet rates (packets/sec)
+- Protocol distribution (TCP, HTTP)
 
 **Provides**:
-- Real-time visibility
-- Alerting basis (integrate with Prometheus/Grafana)
 - Capacity planning data
+- Anomaly detection (unusual traffic spikes)
+- Performance troubleshooting
 
 **Trade-offs**:
-- Requires monitoring infrastructure
-- Unix socket security (access control)
+- Requires router shell access for real-time monitoring
+- Storage for packet captures (if enabled)
+- Performance impact if capturing all packets
 
-**Cost**: Minimal (stats are always collected)
+**Cost**: Low (monitoring) to Medium (full packet capture)
 
-**Complexity**: Low (enable socket) to Medium (full monitoring stack)
+**Complexity**: Low (standard tools) to Medium (analysis)
 
-### D3. Alerting Hooks
+### D4. Alerting via Router
 
-**Capability**: Trigger actions on anomalies
+**Capability**: Trigger actions on firewall events
 
-**Implementation**: HAProxy Lua + external webhook
-```lua
--- On repeated failures, call webhook
-if failCount > threshold then
-    http.post("http://localhost:8080/alert", ...)
-end
+**Implementation**: OpenWrt hotplug scripts
+```bash
+# /etc/hotplug.d/iptables/99-ollama-alerts
+# Trigger on specific log patterns
+
+LOG_PATTERN="OLLAMA_ACCESS"
+ALERT_URL="http://monitoring.local/webhook"
+
+tail -f /var/log/kern.log | grep "$LOG_PATTERN" | while read line; do
+    # Parse log, check thresholds
+    # Send webhook if anomaly detected
+    wget -q -O- --post-data "$line" "$ALERT_URL"
+done
 ```
 
 **Alerts on**:
-- Repeated authentication failures
-- Unusual request patterns
-- High error rates
-- Concurrent connection spikes
+- High connection rate from single client
+- Connections from blocked IPs
+- Unusual traffic patterns
 
 **Provides**:
 - Proactive incident response
@@ -405,13 +463,13 @@ end
 - Operational awareness
 
 **Trade-offs**:
-- Requires external alerting system
+- Requires external alerting endpoint
 - False positives possible
-- Alert fatigue risk
+- Script maintenance overhead
 
-**Cost**: Low (webhook calls async)
+**Cost**: Low (script execution)
 
-**Complexity**: Medium to High (depends on alerting sophistication)
+**Complexity**: Medium to High (scripting, webhook integration)
 
 ---
 
@@ -419,55 +477,84 @@ end
 
 These are architectural changes, not config additions.
 
-### E1. VM/Container Boundary
+### E1. Network-Level Isolation (Already Implemented)
 
-**Capability**: Run Ollama in isolated environment
+**Status**: ✅ Already part of v2 architecture
 
-**Options**:
-- VM: Ollama inside macOS VM (UTM, Parallels)
-- Container: Ollama inside Docker container
-- Sandbox: macOS App Sandbox restrictions
+**Implementation**: DMZ network segmentation
+- DMZ subnet: 192.168.100.0/24
+- LAN subnet: 192.168.1.0/24
+- VPN subnet: 10.10.10.0/24
+- Firewall rules:
+  - VPN → DMZ: port 11434 only
+  - DMZ → LAN: denied
+  - DMZ → Internet: allowed (model downloads)
+  - LAN → DMZ: admin access only (optional)
 
 **Provides**:
-- Kernel-level isolation (Ollama can't affect host)
-- Resource limits (CPU, memory quotas)
+- Server isolation from LAN (Ollama can't access personal files on LAN devices)
+- Limited attack surface (only port 11434 exposed to VPN)
+- Containment (compromised DMZ server can't pivot to LAN)
+
+**No additional cost**: Network segmentation is base v2 architecture
+
+### E2. VM/Container Boundary (Additional Layer)
+
+**Capability**: Run Ollama inside VM or container on DMZ server
+
+**Options**:
+- **VM**: Ollama inside UTM/Parallels VM on Mac Mini
+- **Container**: Ollama inside Docker container
+- **Jail**: Similar to FreeBSD jails (not native on macOS)
+
+**Provides**:
+- Kernel-level isolation (Ollama can't escape to host)
+- Resource limits (CPU, memory, disk quotas)
 - Snapshot/restore capability
+- Additional layer beyond DMZ network isolation
 
 **Trade-offs**:
-- Performance overhead (especially for GPU passthrough)
-- Complexity (VM/container management)
-- Reduced hardware access (GPU may be virtualized)
+- Performance overhead (GPU passthrough complexity)
+- Operational complexity (VM/container management)
+- Reduced hardware access (Metal GPU may not work in VM)
 
-**Cost**: High (10-30% performance penalty for virtualization)
+**Cost**: High (10-30% performance penalty, especially for GPU)
 
 **Complexity**: Very High (requires re-architecture)
 
-**Recommendation**: Only if hosting untrusted models or tools.
+**Recommendation**: Only if defense-in-depth critical (e.g., untrusted models)
 
-### E2. Separate User Account
+### E3. Separate User Account
 
-**Capability**: Run services as dedicated low-privilege user
+**Capability**: Run Ollama as dedicated low-privilege user
 
 **Implementation**:
 ```bash
+# Create ollama user (no login shell)
 sudo dscl . -create /Users/ollama
 sudo dscl . -create /Users/ollama UserShell /usr/bin/false
-# Run services as ollama user
+sudo dscl . -create /Users/ollama NFSHomeDirectory /var/ollama
+
+# Run Ollama LaunchAgent as ollama user
+# Modify ~/Library/LaunchAgents/com.ollama.plist
 ```
 
 **Provides**:
-- Privilege separation (process can't access user files)
+- Privilege separation (Ollama process can't access admin's files)
 - Audit trail (filesystem actions attributed to ollama user)
-- Defense in depth (compromised service contained)
+- Defense in depth (compromised Ollama contained to ollama user)
 
 **Trade-offs**:
-- More complex setup (sudo required)
+- More complex setup (sudo required, file permissions)
 - File permission management overhead
-- Breaks LaunchAgent user-level pattern
+- May break GPU access (Metal requires user session context)
+- LaunchAgent pattern designed for user-level services
 
 **Cost**: None (security benefit)
 
-**Complexity**: Medium (user management, permissions)
+**Complexity**: Medium to High (user management, permissions, GPU access)
+
+**Limitation**: macOS security model ties GPU access to user session (may not work with system user)
 
 ---
 
@@ -505,14 +592,15 @@ When evaluating future hardening options:
 
 | Option | Threat Mitigated | Complexity | Cost | Incremental? |
 |--------|------------------|------------|------|--------------|
-| Request size caps | Resource exhaustion | Low | None | ✅ Yes |
-| Concurrency limits | Abuse, self-DoS | Low | None | ✅ Yes |
-| Access logging | (Visibility only) | Low | Storage | ✅ Yes |
-| Rate limiting | Abuse | Medium | Low | ✅ Yes |
-| Static tokens | Attribution, abuse | Medium | Low | ✅ Yes |
-| Model allowlist | Resource control | Medium | Low | ✅ Yes |
-| mTLS | Strong auth | High | Low | ⚠️ Partial |
-| VM isolation | Kernel compromise | Very High | High | ❌ No |
+| Connection logging (D1) | (Visibility only) | Low | Storage | ✅ Yes |
+| Connection limits (B1) | Abuse, self-DoS | Medium | None | ✅ Yes |
+| Rate limiting (A4, B4) | Abuse | Medium | Low | ✅ Yes |
+| Connection timeouts (B2) | Resource leaks | Low | None | ✅ Yes |
+| Per-peer rules (C2) | Differentiated access | Medium | Low | ✅ Yes |
+| Network monitoring (D3) | (Analysis) | Medium | Storage | ✅ Yes |
+| mTLS (C3) | Strong auth | Very High | Low | ⚠️ Partial |
+| Model allowlist (B3) | Resource control | High | None | ❌ Requires proxy |
+| VM isolation (E2) | Kernel compromise | Very High | High | ❌ No |
 
 ---
 
@@ -521,28 +609,29 @@ When evaluating future hardening options:
 If you decide to add hardening:
 
 **Phase 1: Zero-Cost Visibility**
-1. Enable structured access logs (D1)
-2. Analyze actual usage patterns
+1. Enable firewall connection logging (D1)
+2. Analyze actual usage patterns (connection frequency, timing)
 3. Identify real threats (not theoretical)
 
 **Phase 2: Low-Complexity Controls**
-4. Add request size caps (A3) - prevents obvious abuse
-5. Add concurrency limits (B1) - prevents resource exhaustion
-6. Add method allowlisting (A2) - closes edge cases
+4. Add connection timeouts (B2) - prevents zombie connections
+5. Add connection-level rate limiting (A4) - prevents flood attacks
+6. Add concurrency limits (B1) - prevents resource exhaustion
 
-**Phase 3: Identity-Aware (If Needed)**
-7. Implement per-device tokens (C1) - attribution and revocation
-8. Enable metrics export (D2) - operational visibility
-9. Set up alerting (D3) - proactive response
+**Phase 3: Per-Client Controls (If Needed)**
+7. Implement per-peer firewall rules (C2) - differentiated access
+8. Enable network monitoring (D3) - bandwidth and connection analysis
+9. Set up alerting hooks (D4) - proactive response
 
 **Phase 4: Advanced (Only If Required)**
-10. Rate limiting (B4) - if abuse detected in logs
-11. Model allowlists (B3) - if resource thrashing occurs
-12. mTLS (C2) - if cryptographic auth required
+10. Packet-based rate limiting (B4) - if connection limiting insufficient
+11. mTLS client certificates (C3) - if defense-in-depth critical
+12. Add reverse proxy for endpoint allowlisting (A1) - if fine-grained control needed
 
 **NOT Recommended Unless...**
-- VM isolation (E1) - Only for untrusted models/workloads
-- Separate user (E2) - Only for paranoid deployments
+- Model allowlisting (B3) - Requires reverse proxy (architectural change)
+- VM isolation (E2) - Only for untrusted models/workloads
+- Separate user (E3) - May break GPU access on macOS
 
 ---
 
@@ -550,31 +639,86 @@ If you decide to add hardening:
 
 ### Incremental Addition
 
-All options can be added via HAProxy config changes:
+All options can be added via OpenWrt firewall/iptables changes:
 
-1. Edit `~/.haproxy/haproxy.cfg`
-2. Test config: `haproxy -c -f ~/.haproxy/haproxy.cfg`
-3. Reload (zero downtime): `launchctl kickstart -k gui/$(id -u)/com.haproxy`
-4. Monitor logs for impact
-5. Rollback if needed (restore previous config, reload)
+**Method 1: UCI (persistent, recommended)**
+```bash
+# SSH to router
+ssh root@192.168.1.1
+
+# Add firewall rule via UCI
+uci add firewall rule
+uci set firewall.@rule[-1].name='Connection-Limit'
+uci set firewall.@rule[-1].src='vpn'
+uci set firewall.@rule[-1].dest='dmz'
+uci set firewall.@rule[-1].proto='tcp'
+uci set firewall.@rule[-1].dest_port='11434'
+# ... rule-specific config ...
+
+# Commit and apply
+uci commit firewall
+/etc/init.d/firewall reload
+```
+
+**Method 2: Direct iptables (testing, not persistent)**
+```bash
+# Add rule temporarily
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -m connlimit --connlimit-above 10 -j DROP
+
+# View current rules
+iptables -L FORWARD -v -n
+
+# Delete rule (by line number)
+iptables -D FORWARD 5
+```
+
+**Method 3: Custom script (complex rules)**
+```bash
+# Create /etc/firewall.user for custom iptables rules
+# Executes on firewall reload
+
+cat >> /etc/firewall.user <<'EOF'
+# Custom Ollama hardening rules
+iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+    -m connlimit --connlimit-above 10 -j DROP
+EOF
+
+/etc/init.d/firewall reload
+```
 
 ### Testing Strategy
 
 Before production:
-1. Add control in staging environment
-2. Measure impact (latency, false positives)
+1. Test rule on router with temporary iptables command
+2. Measure impact (connection success rate, latency)
 3. Tune thresholds based on real traffic
-4. Document rollback procedure
-5. Deploy to production with monitoring
+4. Make persistent via UCI or /etc/firewall.user
+5. Monitor logs for false positives
+6. Document rollback procedure
 
 ### Rollback Safety
 
-All options are **config-only** - no code changes required.
+**UCI method** - Config versioned, can rollback:
+```bash
+# Backup before changes
+uci export firewall > /tmp/firewall.backup
 
-Rollback process:
-1. Keep previous config: `cp haproxy.cfg haproxy.cfg.bak`
-2. If issue: `mv haproxy.cfg.bak haproxy.cfg`
-3. Reload: `launchctl kickstart -k gui/$(id -u)/com.haproxy`
+# If issue, restore
+uci import firewall < /tmp/firewall.backup
+uci commit firewall
+/etc/init.d/firewall reload
+```
+
+**iptables method** - Flush and rebuild:
+```bash
+# Remove problematic rule
+iptables -D FORWARD <rule-number>
+
+# Or flush all custom rules
+/etc/init.d/firewall reload  # Reloads from UCI config
+```
+
+**Persistence**: Only UCI and /etc/firewall.user changes survive reboot. Direct iptables commands are lost on reboot (good for testing).
 
 ---
 
@@ -585,12 +729,19 @@ This document provides:
 > **A catalog of optional controls, not requirements**
 
 Key principles:
-- ✅ Base architecture is secure (three-layer defense)
-- ✅ All options are additive (no re-architecture needed)
+- ✅ Base architecture is secure (two-layer defense: Router/VPN/DMZ/Firewall + Ollama)
+- ✅ Most options are additive (router firewall rules)
+- ✅ Some options require architectural changes (reverse proxy for endpoint filtering)
 - ✅ Prioritize based on actual threats (not theory)
 - ✅ Measure before optimizing (logs first, controls second)
 - ✅ Keep it simple (operational complexity is a cost)
 
-**Start with visibility (logs), add controls only when data justifies them.**
+**Start with visibility (connection logs), add controls only when data justifies them.**
 
-The current baseline (Tailscale + HAProxy + Loopback) is strong. Don't add hardening prematurely—add it when you have evidence it's needed.
+The current baseline (WireGuard VPN + DMZ isolation + Port-specific firewall rules) is strong. Don't add hardening prematurely—add it when you have evidence it's needed.
+
+**v2 architecture trade-offs**:
+- ✅ Simpler: No application-layer proxy to maintain
+- ✅ Lower latency: Direct Ollama access (no HAProxy hop)
+- ❌ Coarser control: Network-level only (no endpoint allowlisting without adding proxy)
+- ❌ Limited visibility: Connection logs, not HTTP request details (unless adding proxy or packet capture)

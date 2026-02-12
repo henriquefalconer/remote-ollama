@@ -1,11 +1,11 @@
 # self-sovereign-ollama ai-client
 
-macOS client setup for connecting to remote Ollama, supporting Aider (v1) and Claude Code (v2+).
+macOS client setup for connecting to remote Ollama, supporting Aider and Claude Code.
 
 ## Current Status
 
-**✅ v1**: Aider integration with OpenAI-compatible API
-**✅ v2+**: Claude Code integration, analytics, version management
+- ✅ Aider integration with OpenAI-compatible API
+- ✅ Claude Code integration, analytics, version management
 
 All features are fully implemented and tested (40 tests passing).
 
@@ -14,10 +14,10 @@ All features are fully implemented and tested (40 tests passing).
 The self-sovereign-ollama ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI and Anthropic-compatible APIs.
 
 **Available features**:
-- **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically (v1)
-- **Claude Code** integration with optional remote Ollama backend (v2+)
-- **Performance analytics** tools for measuring tool usage (v2+)
-- **Version compatibility management** for Claude Code + Ollama (v2+)
+- **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically
+- **Claude Code** integration with optional remote Ollama backend
+- **Performance analytics** tools for measuring tool usage
+- **Version compatibility management** for Claude Code + Ollama
 - Zero manual configuration per session
 - All API calls go through secure WireGuard VPN
 
@@ -26,9 +26,9 @@ The self-sovereign-ollama ai-client is a one-time installer that configures your
 1. Installs and configures WireGuard VPN client
 2. Generates WireGuard keypair (sends public key to router admin)
 3. Creates environment variables pointing to remote Ollama server
-4. Installs Aider with automatic Ollama connection (v1)
-5. Optionally configures Claude Code with remote Ollama backend (v2+)
-6. Provides analytics and version management tools (v2+)
+4. Installs Aider with automatic Ollama connection
+5. Optionally configures Claude Code with remote Ollama backend
+6. Provides analytics and version management tools
 7. Provides clean uninstallation
 
 ## Quick Reference
@@ -73,7 +73,7 @@ The self-sovereign-ollama ai-client is a one-time installer that configures your
 
 ---
 
-## v2+ Features (Fully Implemented)
+## Features (Fully Implemented)
 
 ### Claude Code Integration
 

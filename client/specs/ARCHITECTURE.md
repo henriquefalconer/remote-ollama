@@ -28,14 +28,14 @@
 
 ## Supported Interfaces
 
-### Primary (v1)
+### Primary
 
 **Aider** - OpenAI-compatible CLI coding assistant
 - Uses `OPENAI_API_BASE` and `OLLAMA_API_BASE` environment variables
 - Connects to Ollama's OpenAI-compatible `/v1` endpoints
 - Installed via pipx
 
-### Extended (v2+)
+### Extended
 
 **Claude Code** - Anthropic-native CLI coding assistant with advanced orchestration
 - Uses `ANTHROPIC_BASE_URL` environment variable

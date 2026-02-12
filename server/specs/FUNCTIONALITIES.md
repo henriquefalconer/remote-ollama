@@ -416,7 +416,7 @@ These can be added later without changing the base architecture. See `HARDENING_
 
 ## Exposed APIs (via HAProxy)
 
-### OpenAI-Compatible API (v1)
+### OpenAI-Compatible API
 
 - HTTP endpoint at `/v1`
 - Primary route: `/v1/chat/completions`
@@ -435,7 +435,7 @@ These can be added later without changing the base architecture. See `HARDENING_
 - `GET /v1/models/{model}`
 - `POST /v1/responses` (experimental, Ollama 0.5.0+)
 
-### Anthropic-Compatible API (v2+)
+### Anthropic-Compatible API
 
 - HTTP endpoint at `/v1/messages`
 - Anthropic Messages API compatibility layer
@@ -674,7 +674,7 @@ tail -f /tmp/ollama.stderr.log
 
 ---
 
-## Future Expansion (Out of Scope for v1)
+## Future Expansion (Out of Scope for v2)
 
 The proxy architecture enables future enhancements **without re-architecture**:
 

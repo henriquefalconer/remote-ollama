@@ -414,7 +414,7 @@ alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_
 - Replacing Ollama with custom inference server
 - Implementing Anthropic API from scratch
 - Creating web UI for Claude Code
-- Multi-language client support (macOS only in v1)
+- Multi-language client support (macOS only)
 
 ## Summary
 

@@ -71,7 +71,7 @@ http://192.168.100.10:11434
 
 All Ollama endpoints are accessible to authorized VPN clients. Access control provided by router firewall (VPN authentication + port 11434 only).
 
-### OpenAI-Compatible API (v1)
+### OpenAI-Compatible API
 
 For Aider and OpenAI-compatible tools:
 
@@ -81,7 +81,7 @@ For Aider and OpenAI-compatible tools:
 - `/v1/models/{model}` - Get model details
 - `/v1/responses` - Experimental non-stateful endpoint (Ollama 0.5.0+)
 
-### Anthropic-Compatible API (v2+)
+### Anthropic-Compatible API
 
 For Claude Code and Anthropic-compatible tools:
 
@@ -229,7 +229,7 @@ The server includes a comprehensive automated test suite that verifies all funct
 The test suite validates:
 - **Service Status** (3 tests): Ollama LaunchAgent loaded, process running, port listening, HTTP response
 - **OpenAI API** (7 tests): All OpenAI-compatible endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`), streaming, error handling
-- **Anthropic API** (5 tests, v2+): `/v1/messages` endpoint (non-streaming, streaming, system prompts, error handling)
+- **Anthropic API** (5 tests): `/v1/messages` endpoint (non-streaming, streaming, system prompts, error handling)
 - **Security** (4 tests): Process owners, log files, plist configuration, OLLAMA_HOST verification
 - **Network Configuration** (6 tests): DMZ interface binding (192.168.100.10), localhost unreachable (DMZ-only), static IP configuration
 - **Router Integration** (Manual checklist): VPN connectivity, firewall rules, DMZ isolation (requires SSH access to router)
@@ -258,7 +258,7 @@ Running 36 tests
 ✓ PASS POST /v1/chat/completions (non-streaming) succeeded
 ✓ PASS POST /v1/chat/completions (streaming) returns SSE chunks
 
-=== Anthropic API Tests (v2+) ===
+=== Anthropic API Tests ===
 ✓ PASS POST /v1/messages (non-streaming) succeeded
 ✓ PASS POST /v1/messages (streaming) returns SSE chunks
 ✓ PASS POST /v1/messages with system prompt succeeded
@@ -311,7 +311,7 @@ See [specs/SECURITY.md](specs/SECURITY.md) for the complete security model.
 - [specs/FILES.md](specs/FILES.md) – Repository layout
 - [specs/HARDENING_OPTIONS.md](specs/HARDENING_OPTIONS.md) – Router-based security expansion options
 
-## Out of Scope (v1)
+## Out of Scope
 
 - Built-in authentication proxy / API keys
 - Web-based chat UI

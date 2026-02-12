@@ -29,4 +29,4 @@ The installer will modify your shell profile (`~/.zshrc` for zsh or `~/.bashrc` 
 - Requires explicit user consent during installation
 - Uses marker comments for clean removal by uninstaller
 - Ensures environment variables are available in all new shell sessions
-- Optionally adds `claude-ollama` alias for easy backend switching (v2+)
+- Optionally adds `claude-ollama` alias for easy backend switching

@@ -1,6 +1,6 @@
 # self-sovereign-ollama ai-client Repository Layout
 
-## Core Files (v1 - Aider)
+## Core Files
 
 ```
 client/
@@ -11,23 +11,23 @@ client/
 │   ├── REQUIREMENTS.md         # System requirements
 │   ├── SCRIPTS.md              # Script specifications
 │   ├── FILES.md                # This file
-│   ├── CLAUDE_CODE.md          # Claude Code integration specification (v2+)
-│   ├── ANALYTICS.md            # Ralph loop analytics infrastructure (v2+)
-│   └── VERSION_MANAGEMENT.md   # Version compatibility management (v2+)
+│   ├── CLAUDE_CODE.md          # Claude Code integration specification
+│   ├── ANALYTICS.md            # Ralph loop analytics infrastructure
+│   └── VERSION_MANAGEMENT.md   # Version compatibility management
 ├── scripts/
 │   ├── install.sh              # One-time installer (Aider + optional Claude Code setup)
 │   ├── uninstall.sh            # Clean uninstaller
 │   ├── test.sh                 # Comprehensive client functionality tests
-│   ├── check-compatibility.sh  # Verify Claude Code + Ollama version compatibility (v2+)
-│   ├── pin-versions.sh         # Pin tools to known-working versions (v2+)
-│   └── downgrade-claude.sh     # Rollback Claude Code if update breaks (v2+)
+│   ├── check-compatibility.sh  # Verify Claude Code + Ollama version compatibility
+│   ├── pin-versions.sh         # Pin tools to known-working versions
+│   └── downgrade-claude.sh     # Rollback Claude Code if update breaks
 ├── config/
 │   └── env.template            # Environment variable template
 ├── SETUP.md                    # User setup guide
 └── README.md                   # Overview and quick start
 ```
 
-## Ralph Loop Files (v2+ - Claude Code)
+## Ralph Loop Files
 
 **Located in project root** (not client/ subdirectory):
 
@@ -58,7 +58,7 @@ client/
 ~/.ai-client/
 ├── env                         # Generated environment configuration
 ├── uninstall.sh                # Copied for curl-pipe users
-├── .version-lock               # Version compatibility record (v2+)
+├── .version-lock               # Version compatibility record
 └── wireguard/                  # WireGuard configuration
     ├── privatekey              # Client private key (keep secret!)
     └── publickey               # Client public key (send to admin)
@@ -70,7 +70,7 @@ client/
 ├── # >>> ai-client >>>
 │   source ~/.ai-client/env
 │   # <<< ai-client <<<
-└── # >>> claude-ollama >>>    # Optional (v2+)
+└── # >>> claude-ollama >>>
     alias claude-ollama='...'
     # <<< claude-ollama <<<
 ```

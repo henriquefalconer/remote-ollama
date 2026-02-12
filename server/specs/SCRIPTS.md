@@ -202,7 +202,7 @@ Comprehensive test script that validates all server functionality. Designed to r
 - `POST /v1/chat/completions` - JSON mode (`response_format: {"type": "json_object"}`)
 - `POST /v1/responses` - experimental endpoint (note if requires Ollama 0.5.0+)
 
-### API Endpoint Tests (Anthropic-Compatible, v2+)
+### API Endpoint Tests (Anthropic-Compatible)
 
 These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introduced in Ollama 0.5.0+. If Ollama version is < 0.5.0, these tests should be skipped with appropriate messaging.
 

@@ -380,22 +380,6 @@ Server can run on LAN without router/VPN layer. Use Layer 2 (AI server) specs on
 
 ---
 
-## Migration Path from v1 (Tailscale + HAProxy)
-
-If migrating from v1.1.1:
-
-1. **Set up router** - Follow `ROUTER_SETUP.md` to configure OpenWrt + WireGuard
-2. **Reconfigure server** - Run `install.sh` (v2) to update Ollama binding
-3. **Update clients** - Distribute WireGuard configs, run client `install.sh` (v2)
-4. **Test connectivity** - Verify VPN and inference endpoint reachable
-5. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
-
-**Client environment variables change**:
-- Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1` (Tailscale hostname)
-- New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1` (Static DMZ IP)
-
----
-
 ## Out of Scope
 
 ### v2 Baseline

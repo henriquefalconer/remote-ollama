@@ -22,7 +22,7 @@ cd self-sovereign-ollama/client
 ./scripts/install.sh
 ```
 
-### Option 3: Extended Installation with Claude Code (v2+)
+### Option 3: Extended Installation with Claude Code
 
 During installation (Step 12), you'll be prompted to optionally install Claude Code integration:
 
@@ -68,8 +68,8 @@ The installer will:
 - Prompt for server IP (default: `192.168.100.10`)
 - Create `~/.ai-client/env` with required environment variables
 - Update your shell profile (~/.zshrc) to source the environment
-- Install Aider via pipx (v1)
-- **[Optional, v2+]** Prompt for Claude Code + Ollama integration (creates `claude-ollama` alias)
+- Install Aider via pipx
+- Prompt for Claude Code + Ollama integration (creates `claude-ollama` alias)
 - Run a connectivity test (after VPN connection)
 
 ## Post-Installation
@@ -100,7 +100,7 @@ ls ~/.ai-client/wireguard/     # Should show privatekey and publickey files
 curl $OLLAMA_API_BASE/v1/models
 ```
 
-### Verify Claude Code installation (v2+)
+### Verify Claude Code installation
 
 If you opted into Claude Code integration:
 
@@ -131,7 +131,7 @@ curl $OLLAMA_API_BASE/v1/messages \
 
 The client has **no persistent service or daemon**. It only configures environment variables.
 
-### v1: Aider (OpenAI-compatible)
+### Aider (OpenAI-compatible)
 
 #### Run Aider
 ```bash
@@ -150,7 +150,7 @@ echo $OPENAI_API_KEY     # Should show: ollama
 curl $OPENAI_API_BASE/models
 ```
 
-### v2+: Claude Code (Anthropic-compatible)
+### Claude Code (Anthropic-compatible)
 
 Claude Code supports two backends:
 
@@ -239,7 +239,7 @@ See "Analytics and Performance Measurement" section below for detailed workflow.
 
 There's nothing to start, stop, or restart on the client side. Just run tools when you need them.
 
-## Version Management (v2+)
+## Version Management
 
 Claude Code updates frequently, and Ollama's Anthropic API is experimental. Breaking changes happen (~30% chance within 12 months). Version management provides a three-layer defense against compatibility issues.
 
@@ -317,7 +317,7 @@ claude-ollama --model qwen3-coder
 
 For detailed documentation, see `client/specs/VERSION_MANAGEMENT.md`.
 
-## Analytics and Performance Measurement (v2+)
+## Analytics and Performance Measurement
 
 Analytics infrastructure enables **empirical measurement** to validate Ralph loop performance assumptions and make data-driven decisions about Ollama backend viability.
 
@@ -543,7 +543,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 - Some corporate/public WiFi networks block VPN ports (try different network)
 - Verify firewall isn't blocking WireGuard port (default: 51820 UDP)
 
-### Claude Code not found (v2+)
+### Claude Code not found
 
 **Symptom**: `claude` command not found, or `which claude` returns nothing.
 
@@ -557,7 +557,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 - For brew: Reinstall with `brew reinstall claude-code`
 - Verify PATH after installation: Open new terminal or run `exec $SHELL`
 
-### claude-ollama fails with authentication error (v2+)
+### claude-ollama fails with authentication error
 
 **Symptom**: `claude-ollama` returns "API authentication failed" or similar.
 
@@ -569,7 +569,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 - Test with direct curl (see "Verify Claude Code installation" section above)
 - If alias is malformed, re-run install.sh Step 12 (Claude Code setup)
 
-### Version compatibility check fails (v2+)
+### Version compatibility check fails
 
 **Symptom**: `check-compatibility.sh` returns yellow warning or red error.
 
@@ -599,7 +599,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 # brew: (difficult - consider npm instead)
 ```
 
-### Ralph loop analytics not capturing data (v2+)
+### Ralph loop analytics not capturing data
 
 **Symptom**: `loop-with-analytics.sh` completes but `summary.md` is empty or missing metrics.
 
@@ -612,7 +612,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 - Check file permissions: Analytics directory should be writable
 - Review script output for errors during JSON parsing
 
-### Ollama backend slower than expected (v2+)
+### Ollama backend slower than expected
 
 **Symptom**: `claude-ollama` is significantly slower than Anthropic cloud API.
 
@@ -663,19 +663,19 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 If unsure about the state of your installation, run the comprehensive test suite:
 
 ```bash
-# Run all 40 tests (v1 + v2+)
+# Run all 40 tests
 ./scripts/test.sh
 
-# Run only v1 tests (Aider)
+# Run only v1 tests
 ./scripts/test.sh --v1-only
 
-# Run only v2+ tests (Claude Code, version management)
+# Run only v2+ tests
 ./scripts/test.sh --v2-only
 
 # Skip server connectivity tests (useful if server is down)
 ./scripts/test.sh --skip-server
 
-# Skip Claude Code tests (if not using v2+)
+# Skip Claude Code tests
 ./scripts/test.sh --skip-claude
 
 # Run only critical tests (environment + dependencies, skip API validation)
@@ -686,26 +686,3 @@ If unsure about the state of your installation, run the comprehensive test suite
 ```
 
 The test suite will identify specific issues with environment configuration, dependencies, server connectivity, Aider integration, Claude Code setup, or version management.
-
-## The client is now fully configured
-
-### v1 (Aider)
-All tools respecting the OpenAI API contract will work with zero per-session configuration.
-
-### v2+ (Claude Code)
-- **Default**: Claude Code uses Anthropic cloud API (recommended for quality, caching, parallelism)
-- **Optional**: Use `claude-ollama` alias for local Ollama backend (privacy, no costs, experimental)
-- **Analytics**: Use `loop-with-analytics.sh` to measure performance before committing to Ollama
-- **Stability**: Use version management scripts for production deployments
-
-**Decision workflow**:
-1. Install client (Aider + optional Claude Code integration)
-2. Use Anthropic cloud API by default (`claude --model opus-4-6`)
-3. Measure workload with analytics (`loop-with-analytics.sh`)
-4. Evaluate against decision matrix (in analytics summary)
-5. Only switch to Ollama if metrics support it (<30% cache, <10 subagents, >5:1 shallow:deep)
-
-For detailed v2+ guidance, see:
-- `client/specs/CLAUDE_CODE.md` - Backend selection, Ralph loops, alias configuration
-- `client/specs/VERSION_MANAGEMENT.md` - Compatibility matrix, pinning, rollback procedures
-- `client/specs/ANALYTICS.md` - Two-phase testing, metrics explained, decision criteria

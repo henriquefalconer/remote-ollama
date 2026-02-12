@@ -134,11 +134,11 @@ Client → WireGuard VPN (Router) → Firewall (port 11434 only) → Ollama (DMZ
 
 ### Security Properties
 
-✅ **Cryptographic authentication** - WireGuard per-peer public keys (no shared secrets)
-✅ **Network isolation** - DMZ separated from LAN, controlled access from VPN
-✅ **Port-level control** - Only port 11434 accessible from VPN clients
-✅ **Self-sovereign** - No reliance on third-party VPN services
-✅ **Defense in depth** - VPN authentication + DMZ isolation + port firewall
+- ✅ **Cryptographic authentication** - WireGuard per-peer public keys (no shared secrets)
+- ✅ **Network isolation** - DMZ separated from LAN, controlled access from VPN
+- ✅ **Port-level control** - Only port 11434 accessible from VPN clients
+- ✅ **Self-sovereign** - No reliance on third-party VPN services
+- ✅ **Defense in depth** - VPN authentication + DMZ isolation + port firewall
 
 ### Architectural Trade-offs (v1 → v2)
 

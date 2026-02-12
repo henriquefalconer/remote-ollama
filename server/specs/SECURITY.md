@@ -428,26 +428,6 @@ Client → WireGuard VPN → Router Firewall → Ollama (DMZ)
 
 ---
 
-## Migration from v1 to v2
-
-If migrating from Tailscale + HAProxy architecture:
-
-1. **Set up router** - Follow `ROUTER_SETUP.md` to configure OpenWrt, WireGuard, DMZ, firewall
-2. **Configure static DMZ IP** - Assign `192.168.100.10` to server (or configure your own)
-3. **Update Ollama binding** - Change `OLLAMA_HOST=127.0.0.1` to `OLLAMA_HOST=192.168.100.10` in LaunchAgent plist
-4. **Restart Ollama** - `launchctl kickstart -k gui/$(id -u)/com.ollama`
-5. **Verify binding** - `lsof -i :11434` (should show DMZ IP)
-6. **Distribute VPN configs** - Generate WireGuard configs for each client
-7. **Update clients** - Install WireGuard, import configs, update environment variables
-8. **Test connectivity** - VPN clients should reach `192.168.100.10:11434`
-9. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
-
-**Client environment variable changes:**
-- Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1` (Tailscale hostname)
-- New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1` (Static DMZ IP)
-
----
-
 ## Outbound Internet Trade-offs
 
 ### Current Default: Outbound Allowed from DMZ

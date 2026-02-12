@@ -119,7 +119,7 @@ Comprehensive test script that validates all client functionality. Designed to r
 - Test Aider reads environment variables correctly (dry-run mode if available)
 - Note: Full Aider conversation test requires user interaction
 
-### Claude Code Integration Tests (v2+, Optional)
+### Claude Code Integration Tests
 
 These tests validate the optional Claude Code + Ollama integration. All tests in this category should be skippable if Claude Code is not installed or if the user has not opted into the integration.
 
@@ -135,9 +135,9 @@ These tests validate the optional Claude Code + Ollama integration. All tests in
 
 **Flag Support**: `--skip-claude` flag to skip all Claude Code tests
 
-### Version Management Tests (v2+, Optional)
+### Version Management Tests
 
-These tests validate the version management scripts. Tests should be skippable if scripts are not present (v2+ not yet installed).
+These tests validate the version management scripts. Tests should be skippable if scripts are not present.
 
 - Verify `check-compatibility.sh` exists in `client/scripts/`
 - Verify `check-compatibility.sh` has valid bash syntax (`bash -n check-compatibility.sh`)
@@ -192,18 +192,18 @@ These tests validate the version management scripts. Tests should be skippable i
 
 ### Test Modes
 - `--skip-server` - Skip connectivity tests (for offline testing)
-- `--skip-aider` - Skip Aider-specific tests (v1)
-- `--skip-claude` - Skip Claude Code integration tests (v2+)
+- `--skip-aider` - Skip Aider-specific tests
+- `--skip-claude` - Skip Claude Code integration tests
 - `--quick` - Run only critical tests (env vars, dependencies, basic connectivity)
-- `--v1-only` - Run only v1/Aider tests (equivalent to `--skip-claude`)
-- `--v2-only` - Run only v2+/Claude Code tests (equivalent to `--skip-aider`)
+- `--v1-only` - Run only v1 tests (equivalent to `--skip-claude`)
+- `--v2-only` - Run only v2+ tests (equivalent to `--skip-aider`)
 
 ## config/env.template
 
 - Template showing the exact variables required by the contract
 - Used by install.sh to create `~/.ai-client/env`
 
-## Root-Level Analytics Scripts (v2+)
+## Root-Level Analytics Scripts
 
 These scripts are located in the root directory and provide performance analytics for Claude Code + Ollama integration.
 

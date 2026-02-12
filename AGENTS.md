@@ -28,7 +28,7 @@ Do not create separate implementation plans in the server or client directories.
 - Focus on specifications in `client/specs/`
 - Implement client-side scripts in `client/scripts/`
 - Strictly adhere to the API contract in `client/specs/API_CONTRACT.md`
-- Support both Aider (v1) and Claude Code (v2+) integrations
+- Support both Aider and Claude Code integrations
 - Implement analytics and version management tools
 - Update root `IMPLEMENTATION_PLAN.md` for client progress
 - Do not make assumptions about server internals beyond the API contract
@@ -43,16 +43,16 @@ Do not create separate implementation plans in the server or client directories.
 ## Component Capabilities (v2+)
 
 ### Server Capabilities
-- **OpenAI API** (v1) - For Aider and OpenAI-compatible tools
-- **Anthropic API** (v2+) - For Claude Code and Anthropic-compatible tools
+- **OpenAI API** - For Aider and OpenAI-compatible tools
+- **Anthropic API** - For Claude Code and Anthropic-compatible tools
 - Both APIs served by same Ollama process on port 11434
 - No additional configuration required (built into Ollama 0.5.0+)
 
 ### Client Capabilities
-- **Aider integration** (v1) - OpenAI-compatible, always uses remote Ollama
-- **Claude Code integration** (v2+) - Anthropic-compatible, optional Ollama backend
-- **Analytics infrastructure** (v2+) - Measure performance, make informed decisions
-- **Version management** (v2+) - Compatibility checking, version pinning, rollback
+- **Aider integration** - OpenAI-compatible, always uses remote Ollama
+- **Claude Code integration** - Anthropic-compatible, optional Ollama backend
+- **Analytics infrastructure** - Measure performance, make informed decisions
+- **Version management** - Compatibility checking, version pinning, rollback
 
 ## References to Components
 

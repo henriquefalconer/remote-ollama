@@ -289,32 +289,6 @@ See `SECURITY.md` for complete security model.
 
 ---
 
-## Migration from v1 (Tailscale + HAProxy)
-
-If migrating from v1.1.1:
-
-### For Server Operator
-
-1. **Configure router** - Follow `ROUTER_SETUP.md`
-2. **Configure static IP** - Run `install.sh` (v2) or configure manually
-3. **Update Ollama binding** - Change `OLLAMA_HOST=127.0.0.1` to `OLLAMA_HOST=192.168.100.10`
-4. **Restart Ollama** - `launchctl kickstart -k gui/$(id -u)/com.ollama`
-5. **Verify binding** - `lsof -i :11434` (should show DMZ IP)
-6. **Remove old stack** - Uninstall Tailscale and HAProxy (optional)
-
-### For Clients
-
-**Changes required**:
-- Install WireGuard client
-- Import VPN configuration
-- Update environment variables:
-  - Old: `OPENAI_API_BASE=http://self-sovereign-ollama:11434/v1`
-  - New: `OPENAI_API_BASE=http://192.168.100.10:11434/v1`
-
-See `../client/specs/` for complete migration guide.
-
----
-
 ## Performance Characteristics
 
 ### Latency

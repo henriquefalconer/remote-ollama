@@ -1,6 +1,6 @@
 # self-sovereign-ollama ai-client Functionalities (v2.0.0)
 
-## Core Functionality (v1 - Aider)
+## Core Functionality
 
 - One-time installer that makes remote Ollama immediately usable by OpenAI-compatible tools
 - Installs and configures WireGuard VPN client
@@ -11,7 +11,7 @@
 - Uninstaller that removes only client-side changes
 - Comprehensive test script for automated validation of all client functionality
 
-## Extended Functionality (v2+ - Claude Code)
+## Extended Functionality
 
 ### Optional Ollama Backend Integration
 
@@ -47,13 +47,13 @@
 
 ## After Installation
 
-### With Aider (v1)
+### With Aider
 
 - **Connect to VPN**: Establish WireGuard connection
 - User can run `aider` or `aider --yes` and it will connect to remote Ollama
 - Any other tool that honors `OPENAI_API_BASE` + `OPENAI_API_KEY` will work without extra flags
 
-### With Claude Code (v2+)
+### With Claude Code
 
 - **Connect to VPN**: Establish WireGuard connection (required for Ollama backend)
 - **Default behavior**: Claude Code uses Anthropic cloud API (high quality, full features, no VPN needed)
@@ -70,13 +70,13 @@
 
 ## Client Responsibilities
 
-### Core (v1)
+### Core
 
 - Guarantee that after `./scripts/install.sh`, the environment matches API_CONTRACT.md exactly
 - Verify connectivity to remote Ollama server (optional test curl in installer)
 - Provide clear error messages if Tailscale is not joined or tag is missing
 
-### Extended (v2+)
+### Extended
 
 - Provide accurate documentation of Ollama backend limitations for Claude Code
 - Enable empirical measurement before committing to Ollama backend
